@@ -1,0 +1,36 @@
+[project]
+name = "codeguard"
+version = "1.0.0"
+description = "CodeGuard - Software Supply Chain Risk Simulator (educational)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["*/migrations/*", ".venv", "staticfiles"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S"]
+ignore = [
+    "E501",  # line length is handled by `ruff format`; long strings are allowed
+    "S101",  # assert is fine in tests
+    "S311",  # no cryptographic randomness used in the engine
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["S105", "S106"]  # test-only passwords
+"tests/*" = ["S105", "S106"]
+"conftest.py" = ["S105", "S106"]
+"threats/management/commands/seed_codeguard.py" = ["S105"]  # documented dev-only demo password
+
+[tool.ruff.lint.isort]
+known-first-party = ["accounts", "audit", "codeguard", "core", "remediation", "simulation", "threats"]
+
+[tool.coverage.run]
+branch = true
+source = ["accounts", "audit", "threats", "simulation", "remediation", "core"]
+omit = ["*/migrations/*", "*/tests/*", "*/admin.py", "*/apps.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django / local data
+db.sqlite3
+db.sqlite3-journal
+db.sqlite3-wal
+db.sqlite3-shm
+backups/
+*.sqlite3
+staticfiles/
+media/
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+
+# Test, coverage and lint artifacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+reports/
+
+# Browser verification tool outputs
+tools/a11y/node_modules/
+tools/a11y/*.json
+!tools/a11y/package.json
+!tools/a11y/package-lock.json
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local assistant instructions (not shared)
+CLAUDE.md
