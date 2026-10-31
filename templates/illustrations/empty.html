@@ -1,0 +1,19 @@
+{# Empty-state art. kind: "graph" (no runs yet), "search" (no matches), "ledger" (no records), "check" (nothing due). Decorative. #}
+<svg class="illo cg-empty-art" viewBox="0 0 168 112" aria-hidden="true" focusable="false">
+  <rect class="i-sunken" x="4" y="8" width="160" height="100" rx="14"/>
+  {% if kind == "search" %}
+  <circle class="i-paper" cx="74" cy="54" r="24"/><path class="i-line-strong" d="M92 72 L114 92"/>
+  <path class="i-dash" d="M62 54 h24"/>
+  {% elif kind == "ledger" %}
+  <rect class="i-paper" x="40" y="24" width="88" height="70" rx="8"/>
+  <path class="i-line" d="M54 42 h60 M54 56 h48 M54 70 h56 M54 84 h32"/>
+  <circle class="i-accent" cx="122" cy="30" r="6"/>
+  {% elif kind == "check" %}
+  <circle class="i-low-soft" cx="84" cy="58" r="26"/><path class="i-line-strong" d="M72 58 l8 8 l16 -18"/>
+  {% else %}
+  <path class="i-dash" d="M30 78 C 52 78, 52 40, 74 40 S 98 72, 116 72 S 132 36, 142 36"/>
+  <circle class="i-node" cx="30" cy="78" r="7"/><circle class="i-node" cx="74" cy="40" r="7"/>
+  <circle class="i-node" cx="116" cy="72" r="7"/><circle class="i-node" cx="142" cy="36" r="7"/>
+  <circle class="i-accent" cx="30" cy="78" r="3"/>
+  {% endif %}
+</svg>

@@ -1,0 +1,12 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Text and typography · Settings{% endblock %}
+{% block settings_title %}Text and typography{% endblock %}
+{% block settings_body %}
+<header><h1>Text and typography</h1><p>Scale all text in CodeGuard and choose the typeface used for headings. Layouts reflow to fit; nothing is clipped at larger sizes.</p></header>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include "settings/_choices.html" with field=form.text_size preview="size" help="Applies to every page, including tables, charts and diagrams. Your browser's own zoom still works on top of this." %}
+  {% include "settings/_choices.html" with field=form.heading_font preview="font" help="Page titles and large figures use an editorial serif by default. Choose sans-serif for a single typeface throughout." %}
+  <div class="cg-form-actions"><button class="btn btn-primary" type="submit">Save text settings</button></div>
+</form>
+{% endblock %}

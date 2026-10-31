@@ -1,0 +1,24 @@
+{% if runs %}
+<form method="get" action="{% url 'simulation:compare' %}" class="cg-panel cg-panel-body" aria-label="Choose runs to compare">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5"><label class="form-label" for="run-a">Before</label>
+      <select class="form-select" id="run-a" name="a" required>
+        {% for r in runs %}<option value="{{ r.id }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ r.scenario_name }} · {{ r.created_at|date:"Y-m-d H:i" }} · residual {{ r.residual_risk }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5"><label class="form-label" for="run-b">After</label>
+      <select class="form-select" id="run-b" name="b" required>
+        {% for r in runs %}<option value="{{ r.id }}">{{ r.scenario_name }} · {{ r.created_at|date:"Y-m-d H:i" }} · residual {{ r.residual_risk }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Compare</button></div>
+  </div>
+</form>
+{% else %}
+<div class="cg-panel"><div class="cg-empty">
+  {% include "illustrations/empty.html" with kind="graph" %}
+  <h2>Nothing to compare yet</h2>
+  <p>Run at least two simulations to compare them.</p>
+  {% if user_can_simulate %}<a class="btn btn-primary" href="{% url 'simulation:configure' %}">Run a simulation</a>{% endif %}
+</div></div>
+{% endif %}

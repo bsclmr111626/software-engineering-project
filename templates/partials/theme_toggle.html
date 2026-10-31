@@ -1,0 +1,11 @@
+{# Revealed by app.js (it needs JavaScript to know the current theme). Signed-in users' choice is saved as their color mode. #}
+{% if user.is_authenticated %}
+<form method="post" action="{% url 'settings:quick_theme' %}" class="m-0" data-theme-form>
+  {% csrf_token %}
+  <input type="hidden" name="mode" value="">
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <button type="submit" class="cg-icon-btn" data-theme-toggle hidden title="Switch theme" aria-label="Switch to dark mode"><i class="bi bi-moon" aria-hidden="true"></i></button>
+</form>
+{% else %}
+<button type="button" class="cg-icon-btn" data-theme-toggle hidden title="Switch theme" aria-label="Switch to dark mode"><i class="bi bi-moon" aria-hidden="true"></i></button>
+{% endif %}

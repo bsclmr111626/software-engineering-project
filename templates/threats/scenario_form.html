@@ -1,0 +1,72 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if scenario %}Edit {{ scenario.name }}{% else %}New scenario{% endif %}{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'threats:list' %}">Threat library</a></li>{% if scenario %}<li><a href="{% url 'threats:detail' scenario.slug %}">{{ scenario.name }}</a></li>{% endif %}<li aria-current="page">{% if scenario %}Edit{% else %}New scenario{% endif %}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-bug" aria-hidden="true"></i> Threat library</div>
+    <h1>{% if scenario %}Edit scenario{% else %}New custom scenario{% endif %}</h1>
+    <p class="lede">{% if scenario %}Saving creates version {{ scenario.version|add:1 }}. Existing reports keep the version they were run with.{% else %}Custom scenarios are private to you{% if user_is_admin %} unless you share them{% endif %}.{% endif %}</p>
+  </div>
+</div>
+
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="cg-split">
+    <div>
+      <fieldset class="cg-fieldset">
+        <legend>Scenario</legend>
+        <p class="cg-fieldset-help">What happens, where it starts and how bad it is before any controls.</p>
+        {% include "components/field.html" with field=form.name %}
+        {% include "components/field.html" with field=form.description %}
+        <div class="row">
+          <div class="col-md-6">{% include "components/field.html" with field=form.initial_stage %}</div>
+          {% if form.visibility %}<div class="col-md-6">{% include "components/field.html" with field=form.visibility %}</div>{% endif %}
+        </div>
+        <div class="row">
+          <div class="col-6 col-md-3">{% include "components/field.html" with field=form.likelihood %}</div>
+          <div class="col-6 col-md-3">{% include "components/field.html" with field=form.severity %}</div>
+          <div class="col-6 col-md-3">{% include "components/field.html" with field=form.impact %}</div>
+          <div class="col-6 col-md-3">{% include "components/field.html" with field=form.propagation_threshold %}</div>
+        </div>
+      </fieldset>
+
+      <fieldset class="cg-fieldset">
+        <legend>Propagation rules</legend>
+        <p class="cg-fieldset-help">Each rule lets a compromise spread from one stage to another with the given probability. Rules must be reachable from the initial stage. Leave a row blank to ignore it; tick “Remove this rule” to delete an existing one.</p>
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}<div class="alert alert-danger" role="alert" id="rules-errors">{% for e in formset.non_form_errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+        <div id="rule-rows" class="d-grid gap-2">
+          {% for rule_form in formset %}{% include "threats/_rule_row.html" with f=rule_form number=forloop.counter %}{% endfor %}
+        </div>
+        <template id="rule-template">{% include "threats/_rule_row.html" with f=formset.empty_form %}</template>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-3" id="add-rule"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add rule</button>
+      </fieldset>
+
+      <fieldset class="cg-fieldset">
+        <legend>Context and assumptions</legend>
+        <p class="cg-fieldset-help">Shown on the scenario page and in reports, so readers know what the numbers assume.</p>
+        {% include "components/field.html" with field=form.business_impact %}
+        {% include "components/field.html" with field=form.asset_categories %}
+        {% include "components/field.html" with field=form.assumptions %}
+        {% include "components/field.html" with field=form.preventive_measures %}
+        {% include "components/field.html" with field=form.detective_measures %}
+      </fieldset>
+    </div>
+    <aside class="cg-sticky">
+      <fieldset class="cg-panel cg-panel-body cg-fieldset">
+        <legend class="h6">Relevant controls</legend>
+        <p class="small text-muted">{{ form.controls.help_text }}</p>
+        {% for choice in form.controls %}
+        <div class="form-check mb-1">{{ choice.tag }}<label class="form-check-label small" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label></div>
+        {% endfor %}
+      </fieldset>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit"><span class="btn-label">Save scenario</span><span class="btn-loading">Saving…</span></button>
+        <a class="btn btn-outline-secondary" href="{% if scenario %}{% url 'threats:detail' scenario.slug %}{% else %}{% url 'threats:list' %}{% endif %}">Cancel</a>
+      </div>
+    </aside>
+  </div>
+</form>
+{% endblock %}

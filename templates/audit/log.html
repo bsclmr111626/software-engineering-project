@@ -1,0 +1,82 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Activity and audit{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Activity and audit</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-activity" aria-hidden="true"></i> Records</div>
+    <h1>Activity and audit</h1>
+    <p class="lede">{% if show_all %}Every recorded action across CodeGuard.{% else %}The actions you have performed. Administrators can see every user's events.{% endif %} Records are append-only, and passwords, tokens and session data are never stored.</p>
+  </div>
+</div>
+
+<nav class="cg-tabs" aria-label="Views">
+  <a href="{% query_with view='timeline' %}"{% if view == 'timeline' %} aria-current="page"{% endif %}><i class="bi bi-clock-history" aria-hidden="true"></i> Activity timeline</a>
+  <a href="{% query_with view='table' %}"{% if view == 'table' %} aria-current="page"{% endif %}><i class="bi bi-table" aria-hidden="true"></i> Audit records</a>
+</nav>
+
+<form method="get" class="cg-filterbar" aria-label="Filter audit events">
+  <input type="hidden" name="view" value="{{ view }}">
+  <div class="cg-filter"><label class="form-label" for="f-action">Action</label>
+    <select class="form-select" id="f-action" name="action">
+      <option value="">All actions</option>
+      {% for value, label in actions %}<option value="{{ value }}" {% if selected_action == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if show_all %}
+  <div class="cg-filter"><label class="form-label" for="f-user">User</label><input class="form-control" id="f-user" name="user" value="{{ user_query }}" placeholder="Username contains"></div>
+  {% endif %}
+  <div class="d-flex gap-2"><button class="btn btn-outline-secondary" type="submit">Filter</button>{% if selected_action or user_query %}<a class="btn btn-ghost" href="?view={{ view }}">Reset</a>{% endif %}</div>
+</form>
+
+{% if page_obj.object_list %}
+{% if view == 'timeline' %}
+<div class="cg-panel cg-panel-body">
+  {% for day, events in days %}
+  <section class="cg-timeline-day" aria-labelledby="day-{{ forloop.counter }}">
+    <h2 id="day-{{ forloop.counter }}">{{ day|date:"l j F Y" }}</h2>
+    <ol class="cg-timeline">
+      {% for e in events %}
+      {% with cat=category_of|get_item:e.action %}
+      <li>
+        <span class="cg-timeline-icon cat-{{ cat }}" aria-hidden="true"><i class="bi {% if cat == 'access' %}bi-key{% elif cat == 'library' %}bi-bug{% elif cat == 'simulation' %}bi-play-circle{% elif cat == 'remediation' %}bi-list-check{% else %}bi-gear{% endif %}"></i></span>
+        <div class="cg-timeline-body">
+          <p><strong>{{ e.actor_username|default:"Anonymous" }}</strong> {{ e.get_action_display|lower }}{% if e.object_repr %}: <span>{{ e.object_repr }}</span>{% endif %}</p>
+          <div class="cg-timeline-meta">{% for k, v in e.metadata.items %}{{ k }}={{ v }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if e.ip_address %}{% if e.metadata %} · {% endif %}{{ e.ip_address }}{% endif %}</div>
+        </div>
+        <time datetime="{{ e.created_at|date:'c' }}">{{ e.created_at|date:"H:i:s" }}</time>
+      </li>
+      {% endwith %}
+      {% endfor %}
+    </ol>
+  </section>
+  {% endfor %}
+  {% if page_obj.paginator.num_pages > 1 %}{% include "components/pagination.html" %}{% endif %}
+</div>
+{% else %}
+<div class="cg-panel cg-panel--flush">
+  <div class="table-responsive">
+    <table class="table" aria-label="Audit events, newest first">
+      <thead><tr><th scope="col">Time (UTC)</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Object</th><th scope="col">Details</th><th scope="col">IP</th></tr></thead>
+      <tbody>
+        {% for e in page_obj %}
+        <tr>
+          <td class="small text-nowrap mono">{{ e.created_at|date:"Y-m-d H:i:s" }}</td>
+          <td class="small">{{ e.actor_username|default:"anonymous" }}</td>
+          <td><span class="tag">{{ e.get_action_display }}</span></td>
+          <td class="small">{% if e.object_type %}{{ e.object_type }}: {{ e.object_repr }}{% else %}—{% endif %}</td>
+          <td class="small text-muted">{% for k, v in e.metadata.items %}<span class="text-nowrap">{{ k }}={{ v }}</span>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td class="small text-muted mono">{{ e.ip_address|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} events</span>{% include "components/pagination.html" %}</div>{% endif %}
+</div>
+{% endif %}
+{% else %}
+<div class="cg-panel"><div class="cg-empty">{% include "illustrations/empty.html" with kind="ledger" %}<h2>No audit events</h2><p>No events match these filters.</p></div></div>
+{% endif %}
+{% endblock %}

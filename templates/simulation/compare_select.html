@@ -1,0 +1,13 @@
+{% extends "layouts/app.html" %}
+{% block title %}Compare runs{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'core:risk' %}">Risk analysis</a></li><li aria-current="page">Compare</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-layout-split" aria-hidden="true"></i> Risk analysis</div>
+    <h1>Compare two runs</h1>
+    <p class="lede">Choose a “before” and an “after” run, typically the same scenario without and with controls.</p>
+  </div>
+</div>
+{% include "simulation/_compare_form.html" %}
+{% endblock %}

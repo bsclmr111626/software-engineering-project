@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load codeguard_tags %}
+{% block body %}
+<div class="cg-app">
+  <aside class="cg-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Sidebar">
+    <div class="offcanvas-header d-lg-none">
+      {% url 'core:dashboard' as home_url %}{% include "partials/brand.html" with href=home_url %}
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close navigation"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="cg-sidebar-brand d-none d-lg-block">{% url 'core:dashboard' as home_url %}{% include "partials/brand.html" with href=home_url %}</div>
+      <nav class="cg-nav" aria-label="Main">
+        <div class="cg-nav-group">
+          {% url 'core:dashboard' as u %}{% include "partials/nav_link.html" with key="overview" url=u icon="bi-compass" label="Overview" %}
+        </div>
+        <div class="cg-nav-group" role="group" aria-labelledby="nav-model">
+          <div class="cg-nav-label" id="nav-model">Model</div>
+          {% url 'core:supply_chain' as u %}{% include "partials/nav_link.html" with key="supply_chain" url=u icon="bi-diagram-3" label="Supply chain" %}
+          {% url 'threats:list' as u %}{% include "partials/nav_link.html" with key="threats" url=u icon="bi-bug" label="Threat library" %}
+          {% url 'threats:controls' as u %}{% include "partials/nav_link.html" with key="controls" url=u icon="bi-shield-check" label="Security controls" %}
+        </div>
+        <div class="cg-nav-group" role="group" aria-labelledby="nav-simulate">
+          <div class="cg-nav-label" id="nav-simulate">Simulate</div>
+          {% url 'simulation:hub' as u %}{% include "partials/nav_link.html" with key="simulations" url=u icon="bi-play-circle" label="Simulations" %}
+          {% url 'simulation:results' as u %}{% include "partials/nav_link.html" with key="results" url=u icon="bi-bezier2" label="Results" %}
+        </div>
+        <div class="cg-nav-group" role="group" aria-labelledby="nav-analyze">
+          <div class="cg-nav-label" id="nav-analyze">Analyze and respond</div>
+          {% url 'core:risk' as u %}{% include "partials/nav_link.html" with key="risk" url=u icon="bi-graph-down-arrow" label="Risk analysis" %}
+          {% url 'remediation:plan' as u %}{% include "partials/nav_link.html" with key="remediation" url=u icon="bi-list-check" label="Remediation" %}
+        </div>
+        <div class="cg-nav-group" role="group" aria-labelledby="nav-records">
+          <div class="cg-nav-label" id="nav-records">Records</div>
+          {% url 'reports:list' as u %}{% include "partials/nav_link.html" with key="reports" url=u icon="bi-journal-richtext" label="Reports" %}
+          {% url 'audit:log' as u %}{% include "partials/nav_link.html" with key="activity" url=u icon="bi-activity" label="Activity and audit" %}
+        </div>
+      </nav>
+      <div class="cg-sidebar-foot">
+        {% url 'core:help' as u %}{% include "partials/nav_link.html" with key="help" url=u icon="bi-book" label="Methodology" %}
+        {% url 'settings:index' as u %}{% include "partials/nav_link.html" with key="settings" url=u icon="bi-gear" label="Settings" %}
+        <p class="cg-sidebar-note">A risk model for reasoning about supply chain exposure. It never scans or connects to real systems.</p>
+      </div>
+    </div>
+  </aside>
+
+  <div class="cg-main">
+    <header class="cg-topbar">
+      <button class="cg-icon-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Open navigation"><i class="bi bi-list" aria-hidden="true"></i></button>
+      <nav aria-label="Breadcrumb" class="min-w-0">
+        <ol class="cg-crumbs">{% block breadcrumbs %}{% endblock %}</ol>
+      </nav>
+      <div class="cg-topbar-spacer"></div>
+      <div class="cg-topbar-actions">
+        {% if user_can_simulate and nav_section != "simulations" and nav_section != "overview" %}
+        <a class="btn btn-outline-secondary btn-sm d-none d-md-inline-flex" href="{% url 'simulation:configure' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> New simulation</a>
+        {% endif %}
+        {% include "partials/theme_toggle.html" %}
+        <a class="cg-icon-btn" href="{% url 'core:notifications' %}"{% if nav_section == "notifications" %} aria-current="page"{% endif %} title="Notifications" aria-label="Notifications{% if unread_notifications %}, {{ unread_notifications }} unread{% endif %}">
+          <i class="bi bi-bell" aria-hidden="true"></i>{% if unread_notifications %}<span class="cg-count" aria-hidden="true">{{ unread_notifications }}</span>{% endif %}
+        </a>
+        <div class="dropdown">
+          <button class="cg-profile-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu for {{ user.get_username }}">
+            <span class="cg-avatar" aria-hidden="true">{{ user|display_initials }}</span><i class="bi bi-chevron-down d-none d-sm-inline" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li class="cg-menu-id">
+              <span class="cg-avatar" aria-hidden="true">{{ user|display_initials }}</span>
+              <span><strong>{{ user.get_full_name|default:user.get_username }}</strong><span>{{ current_role|title }}{% if user.email %} · {{ user.email }}{% endif %}</span></span>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'settings:profile' %}"><i class="bi bi-person" aria-hidden="true"></i>Your profile</a></li>
+            <li><a class="dropdown-item" href="{% url 'settings:index' %}"><i class="bi bi-gear" aria-hidden="true"></i>Settings</a></li>
+            <li><a class="dropdown-item" href="{% url 'settings:appearance' %}"><i class="bi bi-circle-half" aria-hidden="true"></i>Appearance</a></li>
+            <li><a class="dropdown-item" href="{% url 'settings:security' %}"><i class="bi bi-shield-lock" aria-hidden="true"></i>Password and security</a></li>
+            {% if user_is_admin %}<li><a class="dropdown-item" href="{% url 'settings:users' %}"><i class="bi bi-people" aria-hidden="true"></i>Users and roles</a></li>{% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="post" action="{% url 'accounts:logout' %}" class="cg-menu-form">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Sign out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+    <main id="main" class="cg-content{% block content_class %}{% endblock %}" tabindex="-1">
+      {% include "components/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="cg-footer">
+      <span>CodeGuard models hypothetical scenarios with illustrative parameters. It is not a replacement for a professional security assessment.</span>
+      <span><a href="{% url 'core:help' %}">How the model works</a></span>
+    </footer>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Accessibility · Settings{% endblock %}
+{% block settings_title %}Accessibility{% endblock %}
+{% block settings_body %}
+<header><h1>Accessibility</h1><p>CodeGuard is built to work with a keyboard, never shows risk by colour alone, and gives every chart a text alternative and a table. These options go further.</p></header>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="cg-settings-section">
+    {% include "settings/_switch.html" with field=form.reduce_motion %}
+    {% include "settings/_switch.html" with field=form.increase_contrast %}
+    {% include "settings/_switch.html" with field=form.underline_links %}
+  </div>
+  <div class="cg-note mb-4"><i class="bi bi-fonts" aria-hidden="true"></i><p>Looking for larger text? Use <a href="{% url 'settings:typography' %}">Text and typography</a>. For a dark interface, see <a href="{% url 'settings:appearance' %}">Appearance and theme</a>.</p></div>
+  <div class="cg-form-actions"><button class="btn btn-primary" type="submit">Save accessibility settings</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% load codeguard_tags %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-book" aria-hidden="true"></i> Methodology</div>
+    <h1>How CodeGuard calculates risk</h1>
+    <p class="lede">Every number CodeGuard shows is produced by the rules on this page. Nothing is estimated by an opaque model.</p>
+  </div>
+</div>
+
+<div class="cg-disclaimer mb-5"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <strong>Educational simulation.</strong> CodeGuard is not a replacement for a professional security assessment. Scenarios are hypothetical, control effectiveness values are illustrative, and decisions use a simplified deterministic threshold rather than a calibrated prediction.</div>
+
+<div class="cg-split">
+  <div class="cg-doc">
+    <section class="cg-section" aria-labelledby="stages-h">
+      <h2 id="stages-h">1. The five stages</h2>
+      <div>
+        <div class="table-responsive">
+        <table class="table" aria-label="The five supply chain stages">
+          <thead><tr><th scope="col">#</th><th scope="col">Stage</th><th scope="col">Role</th><th scope="col" class="num">Weight</th></tr></thead>
+          <tbody>
+            {% for s in stages %}
+            <tr><td>{{ s.position }}</td><td><i class="bi bi-{{ s.icon }}" aria-hidden="true"></i> {{ s.name }}</td><td class="small text-secondary-cg">{{ s.description }}<br><span class="text-muted">Assets: {{ s.assets }}</span></td><td class="num">{{ s.weight }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        <p class="small text-muted mb-0">The weight expresses business criticality and is used only when aggregating stage risks into one overall score.</p>
+      </div>
+    </section>
+
+    <section class="cg-section" aria-labelledby="prop-h">
+      <h2 id="prop-h">2. Propagation rules</h2>
+      <div>
+        <p>Each scenario defines directed edges between stages, each with a probability. Normally an edge connects a stage to the next one (<em>forward</em>), but scenarios may also define <em>bypass</em> edges that skip stages and <em>reverse</em> edges that point backwards. A scenario never compromises a stage it has no edge to.</p>
+        <ol>
+          <li>The <strong>entry stage</strong> is compromised by assumption, with the scenario's base likelihood.</li>
+          <li>Starting there, each outgoing edge of a compromised stage is evaluated exactly once (breadth-first). A compromised stage is never processed twice, so cycles are safe.</li>
+          <li>Preventive controls protecting the <em>target</em> stage reduce the edge probability:</li>
+        </ol>
+        <div class="cg-formula mb-3">effective probability = edge probability × (1 − preventive coverage of target / 100)</div>
+        <ol start="4">
+          <li>If the effective probability is <strong>≥ the threshold</strong> (50% by default), the edge propagates and the target becomes <strong>compromised</strong>.</li>
+          <li>Otherwise the target is <strong>blocked</strong> (it would have propagated without controls) or <strong>exposed</strong> (the probability was below the threshold anyway). Neither propagates further.</li>
+        </ol>
+        <p class="mb-0">The threshold rule makes results reproducible and easy to explain. It is a simplification of conditional likelihood, not a statistically calibrated forecast.</p>
+      </div>
+    </section>
+
+    <section class="cg-section" aria-labelledby="risk-h">
+      <h2 id="risk-h">3. Risk scoring</h2>
+      <div>
+        <p>Each stage's likelihood is the likelihood of the most likely successful path from the entry stage (the product of effective probabilities). Stages that were attempted but not compromised keep the likelihood of their strongest attempt.</p>
+        <div class="cg-formula mb-2">Raw risk = likelihood × (severity / 5) × (impact / 5)</div>
+        <div class="cg-formula mb-2">Residual risk = raw risk × (1 − mitigating coverage / 100)</div>
+        <div class="cg-formula mb-2">Combined coverage of independent controls = 1 − ∏(1 − effectivenessᵢ)</div>
+        <div class="cg-formula mb-3">Overall risk = Σ(weightₛ × stage riskₛ) / Σ weightₛ</div>
+        <ul>
+          <li><strong>Inherent risk</strong> is calculated with no controls at all; <strong>residual risk</strong> with the enabled controls.</li>
+          <li><strong>Preventive</strong> controls lower propagation probability (and the entry likelihood). <strong>Detective and recovery</strong> controls do not stop propagation; they lower the residual risk of stages that are reached.</li>
+          <li>Combining controls multiplicatively assumes they act independently, so coverage can approach but never exceed 100%.</li>
+          <li>The overall score uses a <strong>criticality-weighted average</strong> rather than the maximum: the maximum is almost always the entry stage, so it would hide the benefit of downstream controls. The peak stage risk is still reported separately.</li>
+          <li>All scores are clamped to 0–100 and rounded half-up to one decimal place.</li>
+        </ul>
+        <h3 class="h6 mt-3">Risk classes</h3>
+        <div class="d-flex flex-wrap gap-2">
+          {% for lower, label in bands %}<span class="cg-badge risk-{{ label }}"><i class="bi {{ label|risk_icon }}" aria-hidden="true"></i>{{ label|title }} ≥ {{ lower|floatformat:0 }}</span>{% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="cg-section" aria-labelledby="rec-h">
+      <h2 id="rec-h">4. Recommendations and comparisons</h2>
+      <div>
+        <p>For every catalog control that is not enabled, CodeGuard re-runs the same simulation with that control added and reports the exact change in overall residual risk and in the stages that stay compromised. Recommendations are ranked by that modeled reduction, then by relevance to the scenario, effort and priority.</p>
+        <p class="mb-0">The <em>control effectiveness summary</em> on each report uses the reverse test: it removes each enabled control in turn. Use <em>Rerun with changes</em> and <em>Compare</em> to see before-and-after results side by side. A modeled improvement does not guarantee equivalent protection in a real organization.</p>
+      </div>
+    </section>
+
+    <section class="cg-section" aria-labelledby="read-h">
+      <h2 id="read-h">5. Reading a report</h2>
+      <div>
+        {% include "components/legend.html" %}
+        <p class="mt-3 mb-0">Each report stores a versioned snapshot of the scenario, its rules and the controls used. If a scenario is edited or deleted later, past reports do not change.</p>
+      </div>
+    </section>
+  </div>
+
+  <aside class="cg-stack" aria-label="Reference">
+    <section class="cg-section" aria-labelledby="lim-h">
+      <h2 id="lim-h">Model limitations</h2>
+      <div>
+        <ul class="small mb-0">{% for item in limitations %}<li class="mb-2">{{ item }}</li>{% endfor %}</ul>
+      </div>
+    </section>
+    <section class="cg-section" aria-labelledby="ctl-h">
+      <h2 id="ctl-h">Control parameters</h2>
+      <div>
+        <table class="table table-sm" aria-label="Control effectiveness parameters">
+          <thead><tr><th scope="col">Control</th><th scope="col">Type</th><th scope="col" class="num">Eff.</th></tr></thead>
+          <tbody>{% for c in controls %}<tr><td class="small">{{ c.name }}</td><td class="small text-muted">{{ c.get_category_display }}</td><td class="num">{{ c.effectiveness }}%</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="cg-panel cg-panel--flush" aria-labelledby="roles-h">
+      <div class="cg-panel-head"><h2 id="roles-h">Roles</h2></div>
+      <div class="cg-panel-body small">
+        <p><strong>Viewer</strong>: browse scenarios, controls and shared reports.</p>
+        <p><strong>Analyst</strong>: also create private scenarios, run simulations, share and export reports.</p>
+        <p class="mb-0"><strong>Administrator</strong>: also manage shared scenarios, user roles and view the full audit log.</p>
+      </div>
+    </section>
+  </aside>
+</div>

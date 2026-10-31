@@ -1,0 +1,42 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Password and security · Settings{% endblock %}
+{% block settings_title %}Password and security{% endblock %}
+{% block settings_body %}
+<header><h1>Password and security</h1><p>Your password, the protections on your account and its recent sign-in activity.</p></header>
+<section class="cg-settings-section" aria-labelledby="pw-h">
+  <h2 id="pw-h">Password</h2>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 cg-panel cg-panel-body">
+    <div>
+      <strong>{% if last_password_change %}Last changed {{ last_password_change|date:"j F Y" }}{% else %}Not changed since the account was created{% endif %}</strong>
+      <div class="small text-muted">Changing your password signs out your other sessions.</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'accounts:password_change' %}"><i class="bi bi-key" aria-hidden="true"></i> Change password</a>
+  </div>
+</section>
+<section class="cg-settings-section" aria-labelledby="prot-h">
+  <h2 id="prot-h">Protections on your account</h2>
+  <dl class="cg-ledger">
+    <dt>Sign-in throttling</dt><dd>After {{ lockout_failures }} failed attempts, sign-in to your username is blocked for {{ lockout_minutes }} minutes.</dd>
+    <dt>Password rules</dt><dd>Checked against your username and email, a minimum length of 10 characters, a list of common passwords, and all-numeric passwords.</dd>
+    <dt>Session protection</dt><dd>Cookies are HTTP-only and same-site; every form is protected against cross-site request forgery. <a href="{% url 'settings:sessions' %}">Manage sessions</a></dd>
+  </dl>
+</section>
+<section class="cg-settings-section" aria-labelledby="act-h">
+  <h2 id="act-h">Recent security activity</h2>
+  <div class="cg-panel cg-panel--flush">
+    <div class="table-responsive">
+      <table class="table table-sm" aria-label="Recent sign-ins and security events on your account">
+        <thead><tr><th scope="col">When (UTC)</th><th scope="col">Event</th><th scope="col">IP address</th></tr></thead>
+        <tbody>
+          {% for e in events %}
+          <tr><td class="mono small text-nowrap">{{ e.created_at|date:"Y-m-d H:i" }}</td><td>{% if e.action == 'login_failed' or e.action == 'login_throttled' %}<i class="bi bi-shield-exclamation text-danger" aria-hidden="true"></i> {% endif %}{{ e.get_action_display }}</td><td class="mono small">{{ e.ip_address|default:"—" }}</td></tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-muted">No activity recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="small text-muted mt-2">See everything in <a href="{% url 'audit:log' %}">Activity and audit</a>.</p>
+</section>
+{% endblock %}

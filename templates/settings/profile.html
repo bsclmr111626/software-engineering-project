@@ -1,0 +1,25 @@
+{% extends "layouts/settings.html" %}
+{% load codeguard_tags %}
+{% block title %}Profile · Settings{% endblock %}
+{% block settings_title %}Profile{% endblock %}
+{% block settings_body %}
+<header><h1>Profile</h1><p>How you appear to colleagues in CodeGuard: on shared reports, in the audit log and in user management.</p></header>
+<div class="cg-profile-card">
+  <span class="cg-avatar cg-avatar--lg" aria-hidden="true">{{ user|display_initials }}</span>
+  <div>
+    <h2>{{ user.get_full_name|default:user.get_username }}</h2>
+    <p>@{{ user.get_username }} · {{ current_role|title }}{% if user.profile.job_title %} · {{ user.profile.job_title }}{% endif %}{% if user.profile.team %}, {{ user.profile.team }}{% endif %}</p>
+    <p>{{ stats.runs }} simulation{{ stats.runs|pluralize }} · {{ stats.scenarios }} scenario{{ stats.scenarios|pluralize }} authored · {{ stats.remediation }} remediation item{{ stats.remediation|pluralize }}</p>
+  </div>
+</div>
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  <div class="row">
+    <div class="col-sm-6">{% include "components/field.html" with field=form.first_name %}</div>
+    <div class="col-sm-6">{% include "components/field.html" with field=form.last_name %}</div>
+  </div>
+  {% include "components/field.html" with field=form.job_title %}
+  {% include "components/field.html" with field=form.team %}
+  <div class="cg-form-actions"><button class="btn btn-primary" type="submit"><span class="btn-label">Save profile</span><span class="btn-loading">Saving…</span></button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Notifications{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Notifications</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-bell" aria-hidden="true"></i> Inbox</div>
+    <h1>Notifications</h1>
+    <p class="lede">The last 30 days of shared reports, remediation deadlines and security events on your account. Choose what appears here in <a href="{% url 'settings:notifications' %}">notification settings</a>.</p>
+  </div>
+  {% if unread_notifications %}
+  <form method="post" action="{% url 'core:notifications_read' %}" class="cg-page-actions">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-check2-all" aria-hidden="true"></i> Mark all as read</button></form>
+  {% endif %}
+</div>
+<div class="cg-panel cg-panel--flush">
+  {% for n in notifications %}
+  <article class="cg-notice{% if n.unread %} is-unread{% endif %}">
+    <span class="cg-notice-icon" aria-hidden="true"><i class="bi {{ n.icon }}"></i></span>
+    <div>
+      <h2 class="h3">{% if n.unread %}<span class="cg-unread-dot" aria-hidden="true"></span><span class="visually-hidden">Unread: </span>{% endif %}<a href="{{ n.url }}">{{ n.title }}</a></h2>
+      <p>{{ n.detail }}</p>
+    </div>
+    <span class="small text-muted text-nowrap">{% when n.at %}</span>
+  </article>
+  {% empty %}
+  <div class="cg-empty">{% include "illustrations/empty.html" with kind="check" %}<h2>You're all caught up</h2><p>Nothing new in the last 30 days for the categories you follow.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{# Five-stage supply chain diagram. Expects `pipeline` from simulation.visual.build_pipeline #}
+<div class="cg-pipeline-scroll">
+<svg class="cg-pipeline" viewBox="0 0 {{ pipeline.width }} {{ pipeline.height }}" role="img" aria-labelledby="{{ svg_id|default:'pipeline' }}-title" aria-describedby="{{ svg_id|default:'pipeline' }}-desc">
+  <title id="{{ svg_id|default:'pipeline' }}-title">{{ svg_title|default:"Software supply chain diagram" }}</title>
+  <desc id="{{ svg_id|default:'pipeline' }}-desc">{% for n in pipeline.nodes %}{{ n.name }}{% if n.state_label %}: {{ n.state_label }}{% endif %}. {% endfor %}{% for e in pipeline.edges %}{{ e.source_name }} to {{ e.target_name }}, {{ e.label }}, {{ e.status_label }}. {% endfor %}</desc>
+  <defs>
+    <marker id="arrow-propagated" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="marker-propagated" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-blocked_by_controls" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="marker-blocked_by_controls" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-below_threshold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="marker-below_threshold" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-rule" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="marker-rule" d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-not_evaluated" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="marker-not_evaluated" d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+  {% for e in pipeline.edges %}
+  <g class="edge {{ e.status }}">
+    <path d="{{ e.path }}" marker-end="url(#arrow-{{ e.status }})"><title>{{ e.status_label }}: {{ e.label }}</title></path>
+    <text x="{{ e.label_x }}" y="{{ e.label_y }}" text-anchor="middle">{{ e.label }}{% if e.status == 'blocked_by_controls' %} ✕{% endif %}</text>
+  </g>
+  {% endfor %}
+  {% for n in pipeline.nodes %}
+  <g class="node {{ n.state }}">
+    <rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="10"/>
+    {% for line in n.name_lines %}
+    <text x="{{ n.cx }}" y="{% if forloop.first %}{{ n.y|add:24 }}{% else %}{{ n.y|add:42 }}{% endif %}" text-anchor="middle">{{ line }}</text>
+    {% endfor %}
+    {% if n.state_label %}
+    <text class="state-text" x="{{ n.cx }}" y="{{ n.y|add:66 }}" text-anchor="middle">{{ n.symbol }} {{ n.state_label|upper }}</text>
+    {% endif %}
+    {% if n.risk is not None %}
+    <text class="risk-text" x="{{ n.cx }}" y="{{ n.y|add:85 }}" text-anchor="middle">Risk {{ n.risk }}</text>
+    {% endif %}
+  </g>
+  {% endfor %}
+</svg>
+</div>

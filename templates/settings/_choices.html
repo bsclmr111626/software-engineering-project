@@ -1,0 +1,25 @@
+{# Radio options as cards. preview: "mode", "accent", "size", "font" or nothing. #}
+<fieldset class="cg-settings-section">
+  <legend class="h6 mb-1">{{ field.label }}</legend>
+  {% if help %}<p class="cg-section-help">{{ help }}</p>{% endif %}
+  <div class="cg-choices">
+    {% for choice in field %}
+    <label class="cg-choice" for="{{ choice.id_for_label }}">
+      {% if preview == "mode" %}
+        {% if choice.data.value == "system" %}<span class="cg-preview cg-preview--split" aria-hidden="true"><span class="cg-preview" data-theme="light"></span><span class="cg-preview" data-theme="dark"></span></span>
+        {% else %}<span class="cg-preview" data-theme="{{ choice.data.value }}" aria-hidden="true"><span class="cg-preview-side"><span></span><span></span><span></span></span><span class="cg-preview-main"><span></span><span></span><i></i></span></span>{% endif %}
+      {% elif preview == "surface" %}
+        <span class="cg-preview" data-theme="light" data-surface="{{ choice.data.value }}" aria-hidden="true"><span class="cg-preview-side"><span></span><span></span><span></span></span><span class="cg-preview-main"><span class="cg-preview-panel"></span><span></span><i></i></span></span>
+      {% elif preview == "accent" %}
+        <span class="cg-preview cg-preview--split" aria-hidden="true"><span class="cg-preview-main" data-theme="light" data-accent="{{ choice.data.value }}"><span></span><span></span><i></i></span><span class="cg-preview-main" data-theme="dark" data-accent="{{ choice.data.value }}"><span></span><span></span><i></i></span></span>
+      {% elif preview == "font" %}
+        <span class="cg-type-sample cg-type-sample--{{ choice.data.value }}" aria-hidden="true">Aa Risk</span>
+      {% elif preview == "size" %}
+        <span class="cg-type-sample cg-size-{{ choice.data.value }}" aria-hidden="true">Aa</span>
+      {% endif %}
+      <span class="cg-choice-row">{{ choice.tag }}{{ choice.choice_label }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|join:" " }}</div>{% endif %}
+</fieldset>

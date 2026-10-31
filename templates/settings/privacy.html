@@ -1,0 +1,26 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Privacy and data · Settings{% endblock %}
+{% block settings_title %}Privacy and data{% endblock %}
+{% block settings_body %}
+<header><h1>Privacy and data</h1><p>Who can see your work, what CodeGuard records about you, and how to take a copy of it.</p></header>
+<form method="post" novalidate class="cg-settings-section">
+  {% csrf_token %}
+  <h2 class="h6">Report visibility</h2>
+  <p class="cg-section-help">Reports and private scenarios are visible only to you unless you share them. Administrators cannot open your private reports. You currently share {{ shared_count }} report{{ shared_count|pluralize }}.</p>
+  {% include "settings/_switch.html" with field=form.share_reports_by_default %}
+  <div class="cg-form-actions mt-3"><button class="btn btn-primary" type="submit">Save privacy settings</button></div>
+</form>
+<section class="cg-settings-section" aria-labelledby="rec-h">
+  <h2 id="rec-h">What CodeGuard records</h2>
+  <dl class="cg-ledger">
+    <dt>Audit log</dt><dd>Sign-ins, failed sign-ins to your username, and actions such as running, sharing or exporting reports, with time, IP address and safe metadata. You have {{ event_count }} recorded event{{ event_count|pluralize }}. Records are append-only and kept until an administrator runs the retention command.</dd>
+    <dt>Never recorded</dt><dd>Passwords, session keys, tokens and the content of form fields that hold credentials.</dd>
+    <dt>Sessions</dt><dd>Only a short device description (for example “Chrome on Windows”) and the sign-in time, for the <a href="{% url 'settings:sessions' %}">Sessions</a> page.</dd>
+  </dl>
+</section>
+<section class="cg-settings-section" aria-labelledby="export-h">
+  <h2 id="export-h">Download your data</h2>
+  <p class="cg-section-help">A JSON file with your account details, preferences, scenarios, simulation runs, remediation items and audit events. The download itself is recorded in the audit log.</p>
+  <a class="btn btn-outline-secondary" href="{% url 'settings:export_data' %}"><i class="bi bi-download" aria-hidden="true"></i> Download my data</a>
+</section>
+{% endblock %}

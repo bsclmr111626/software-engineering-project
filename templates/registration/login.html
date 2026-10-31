@@ -1,0 +1,25 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<h1>Sign in</h1>
+<p>Welcome back. Sign in to run simulations and review your organization's reports.</p>
+{% if form.non_field_errors %}
+<div class="alert alert-danger d-flex gap-2" role="alert" id="login-error"><i class="bi bi-x-octagon" aria-hidden="true"></i><div>{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div></div>
+{% endif %}
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  <div class="cg-field">
+    <label class="form-label" for="id_username">Username</label>
+    <input class="form-control" type="text" name="username" id="id_username" autocomplete="username" required autofocus value="{{ form.username.value|default:'' }}"{% if form.errors %} aria-invalid="true" aria-describedby="login-error"{% endif %}>
+  </div>
+  <div class="cg-field">
+    <div class="d-flex justify-content-between align-items-baseline"><label class="form-label" for="id_password">Password</label><a class="small" href="{% url 'accounts:password_reset' %}">Forgot your password?</a></div>
+    <input class="form-control" type="password" name="password" id="id_password" autocomplete="current-password" required{% if form.errors %} aria-invalid="true" aria-describedby="login-error"{% endif %}>
+  </div>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">Sign in</span><span class="btn-loading">Signing in…</span></button>
+</form>
+<div class="cg-auth-alt">
+  {% if registration_open %}<span>New to CodeGuard? <a href="{% url 'accounts:register' %}">Create an account</a></span>{% else %}<span>Accounts are created by your administrator.</span>{% endif %}
+</div>
+{% endblock %}

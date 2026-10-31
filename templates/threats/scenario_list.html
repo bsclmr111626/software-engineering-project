@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Threat library{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Threat library</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-bug" aria-hidden="true"></i> Model</div>
+    <h1>Threat library</h1>
+    <p class="lede">Hypothetical supply chain attacks used as simulation inputs. Shared scenarios are visible to everyone; private scenarios only to their owner.</p>
+  </div>
+  {% if user_can_manage %}
+  <div class="cg-page-actions"><a class="btn btn-primary" href="{% url 'threats:create' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> New scenario</a></div>
+  {% endif %}
+</div>
+
+<nav class="cg-tabs" aria-label="Library views">
+  <a href="{% url 'threats:list' %}"{% if not filtered %} aria-current="page"{% endif %}>Active <span class="cg-tab-count">{{ totals.active }}</span></a>
+  {% if user_can_manage %}<a href="{% url 'threats:list' %}?visibility=private&amp;status=all"{% if request.GET.visibility == 'private' and request.GET.status == 'all' %} aria-current="page"{% endif %}>My private scenarios <span class="cg-tab-count">{{ totals.private }}</span></a>{% endif %}
+  <a href="{% url 'threats:list' %}?status=archived"{% if request.GET.status == 'archived' and not request.GET.visibility %} aria-current="page"{% endif %}>Archived <span class="cg-tab-count">{{ totals.archived }}</span></a>
+</nav>
+
+<form method="get" class="cg-filterbar" role="search" aria-label="Filter scenarios">
+  <div class="cg-filter cg-filter--grow"><label class="form-label" for="{{ filter_form.q.id_for_label }}">Search</label><div class="cg-search"><i class="bi bi-search" aria-hidden="true"></i>{{ filter_form.q }}</div></div>
+  <div class="cg-filter"><label class="form-label" for="{{ filter_form.stage.id_for_label }}">Entry stage</label>{{ filter_form.stage }}</div>
+  <div class="cg-filter"><label class="form-label" for="{{ filter_form.severity.id_for_label }}">Severity</label>{{ filter_form.severity }}</div>
+  <div class="cg-filter"><label class="form-label" for="{{ filter_form.status.id_for_label }}">Status</label>{{ filter_form.status }}</div>
+  <div class="cg-filter"><label class="form-label" for="{{ filter_form.visibility.id_for_label }}">Visibility</label>{{ filter_form.visibility }}</div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Apply</button>
+    {% if filtered %}<a class="btn btn-ghost" href="{% url 'threats:list' %}">Reset</a>{% endif %}
+  </div>
+</form>
+
+{% if page_obj.object_list %}
+<div class="cg-panel cg-panel--flush">
+  <div class="table-responsive">
+    <table class="table table-hover" aria-label="Threat scenarios">
+      <thead><tr><th scope="col">Scenario</th><th scope="col">Entry stage</th><th scope="col">Severity</th><th scope="col" class="num">Likelihood</th><th scope="col" class="num">Rules</th><th scope="col">Visibility</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>
+        {% for scenario in page_obj %}
+        <tr>
+          <td>
+            <a href="{% url 'threats:detail' scenario.slug %}">{{ scenario.name }}</a>
+            <span class="cg-cell-sub">{{ scenario.description|truncatechars:110 }}</span>
+          </td>
+          <td class="text-nowrap"><i class="bi bi-{{ scenario.initial_stage.icon }} text-muted" aria-hidden="true"></i> {{ scenario.initial_stage.name }}</td>
+          <td class="text-nowrap">{{ scenario.severity|level_ticks }} <span class="small">{{ scenario.severity }}/5</span></td>
+          <td class="num">{{ scenario.likelihood }}%</td>
+          <td class="num">{{ scenario.rules.all|length }}</td>
+          <td>
+            <div class="cg-tags">
+              {% if scenario.visibility == 'shared' %}<span class="tag tag-strong"><i class="bi bi-people" aria-hidden="true"></i> Shared</span>{% else %}<span class="tag"><i class="bi bi-lock" aria-hidden="true"></i> Private</span>{% endif %}
+              {% if scenario.is_system %}<span class="tag">Reference</span>{% endif %}
+              {% if scenario.status == 'archived' %}<span class="tag"><i class="bi bi-archive" aria-hidden="true"></i> Archived</span>{% endif %}
+            </div>
+          </td>
+          <td class="text-end text-nowrap">
+            {% if user_can_simulate and scenario.is_active %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'simulation:configure' %}?scenario={{ scenario.slug }}"><i class="bi bi-play-fill" aria-hidden="true"></i> Simulate<span class="visually-hidden"> {{ scenario.name }}</span></a>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} scenarios</span>{% include "components/pagination.html" %}</div>{% endif %}
+</div>
+{% else %}
+<div class="cg-panel"><div class="cg-empty">
+  {% include "illustrations/empty.html" with kind="search" %}
+  <h2>No scenarios match these filters</h2>
+  <p>Try a different search, or include archived scenarios.</p>
+  <a class="btn btn-outline-secondary" href="{% url 'threats:list' %}">Reset filters</a>
+</div></div>
+{% endif %}
+{% endblock %}

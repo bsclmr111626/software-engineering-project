@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Results{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'simulation:hub' %}">Simulations</a></li><li aria-current="page">Results</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-bezier2" aria-hidden="true"></i> Simulate</div>
+    <h1>Simulation results</h1>
+    <p class="lede">Each completed run, with where the compromise travelled. Open one to follow its propagation paths, stage-level risk, affected assets and the reasoning behind every decision.</p>
+  </div>
+  <div class="cg-page-actions"><a class="btn btn-outline-secondary" href="{% url 'core:risk' %}"><i class="bi bi-layout-split" aria-hidden="true"></i> Compare runs</a></div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <nav class="cg-segmented" aria-label="Whose results">
+    {% for key, label in scopes.items %}<a href="?scope={{ key }}"{% if key == scope %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+  <ul class="cg-legend" aria-label="Stage strip legend">
+    <li><span class="cg-key cg-strip-bar state-entry" aria-hidden="true"></span>Entry</li>
+    <li><span class="cg-key cg-strip-bar state-compromised" aria-hidden="true"></span>Compromised</li>
+    <li><span class="cg-key cg-strip-bar state-blocked" aria-hidden="true"></span>Blocked</li>
+    <li><span class="cg-key cg-strip-bar state-exposed" aria-hidden="true"></span>Exposed</li>
+    <li><span class="cg-key cg-strip-bar" aria-hidden="true"></span>Unaffected</li>
+  </ul>
+</div>
+
+{% if page_obj.object_list %}
+<h2 class="visually-hidden">Completed runs</h2>
+<div class="cg-card-grid">
+  {% for run in page_obj %}
+  <article class="cg-card">
+    <div class="d-flex justify-content-between align-items-start gap-2">
+      <div class="cg-tags">
+        {% if run.user != user %}<span class="tag"><i class="bi bi-people" aria-hidden="true"></i> {{ run.user.get_username }}</span>{% elif run.is_shared %}<span class="tag tag-strong">Shared</span>{% endif %}
+        <span class="tag tag-mono">{{ run.enabled_controls|length }} control{{ run.enabled_controls|length|pluralize }}</span>
+      </div>
+      <span class="cg-badge risk-{{ run.classification }}"><i class="bi {{ run.classification|risk_icon }}" aria-hidden="true"></i>{{ run.residual_risk }} {{ run.classification|title }}</span>
+    </div>
+    <h3><a href="{% url 'simulation:detail' run.id %}">{{ run.scenario_name }}</a></h3>
+    <div class="cg-strip" role="list" aria-label="Stage outcomes">
+      {% for s in run.stage_results.all %}
+      <div class="cg-strip-cell" role="listitem"><span class="cg-strip-bar state-{{ s.state }}" aria-hidden="true"></span><span class="cg-strip-name">{{ s.stage_name }}<span class="visually-hidden">: {{ s.state|state_label }}</span></span></div>
+      {% endfor %}
+    </div>
+    <div class="cg-card-foot">
+      <span class="small text-muted">{% when run.created_at %} · inherent {{ run.inherent_risk }}</span>
+      <span class="small"><strong>{{ run.compromised_count }}</strong> of {{ run.stage_results.all|length }} compromised</span>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% if page_obj.paginator.num_pages > 1 %}<div class="mt-4">{% include "components/pagination.html" %}</div>{% endif %}
+{% else %}
+<div class="cg-panel"><div class="cg-empty">
+  {% include "illustrations/empty.html" with kind="graph" %}
+  <h2>No results here yet</h2>
+  <p>{% if scope == 'shared' %}No colleague has shared a report yet.{% else %}Completed simulations appear here.{% endif %}</p>
+  {% if user_can_simulate %}<a class="btn btn-primary" href="{% url 'simulation:configure' %}">Run a simulation</a>{% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

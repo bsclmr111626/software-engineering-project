@@ -1,0 +1,7 @@
+<div class="cg-switch-row">
+  <div class="cg-switch-text">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+  </div>
+  <span class="cg-switch">{{ field }}<span class="cg-switch-track" aria-hidden="true"></span></span>
+</div>

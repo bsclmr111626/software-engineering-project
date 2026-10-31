@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="d-flex flex-column min-vh-100">
+  <header class="cg-site-header"><div class="cg-site-header-inner">{% include "partials/brand.html" with href="/" %}</div></header>
+  <main id="main" class="cg-wrap flex-grow-1 d-flex align-items-center" tabindex="-1">
+    <div class="cg-split w-100 py-5 align-items-center">
+      <div>
+        <span class="cg-kicker">{% block code %}{% endblock %}</span>
+        <h1 class="display mb-3">{% block heading %}{% endblock %}</h1>
+        <p class="lede">{% block message %}{% endblock %}</p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          {% if user.is_authenticated %}<a class="btn btn-primary" href="{% url 'core:dashboard' %}">Go to the overview</a>{% else %}<a class="btn btn-primary" href="/">Go to the start page</a>{% endif %}
+          <a class="btn btn-outline-secondary" href="{% url 'core:help' %}">Read the methodology</a>
+        </div>
+      </div>
+      <div class="d-none d-lg-block">
+        <svg class="illo" viewBox="0 0 320 220" aria-hidden="true" focusable="false">
+          <path class="i-dash" d="M30 170 C 90 170, 90 70, 150 70"/>
+          <path class="i-line" d="M150 70 C 200 70, 200 150, 250 150"/>
+          <circle class="i-node" cx="30" cy="170" r="10"/><circle class="i-node" cx="150" cy="70" r="10"/>
+          <circle class="i-paper" cx="250" cy="150" r="22"/><path class="i-line-strong" d="M242 142 l16 16 M258 142 l-16 16"/>
+          <text class="i-label" x="214" y="196">path not found</text>
+        </svg>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}

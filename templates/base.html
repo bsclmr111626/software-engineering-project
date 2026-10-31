@@ -1,0 +1,24 @@
+{% load static codeguard_tags %}<!doctype html>
+<html lang="en"{% for name, value in html_attrs.items %} {{ name }}="{{ value }}"{% endfor %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% theme_init_script %}
+  <title>{% block title %}CodeGuard{% endblock %} · CodeGuard</title>
+  <meta name="description" content="{% block meta_description %}CodeGuard models how a compromise could propagate through the stages of a software supply chain, and how much risk security controls remove.{% endblock %}">
+  <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;display=swap">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/codeguard.css' %}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="cg-skip" href="#main">Skip to main content</a>
+{% block body %}{% endblock %}
+<div class="cg-tooltip" id="cg-tooltip" role="tooltip" hidden></div>
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

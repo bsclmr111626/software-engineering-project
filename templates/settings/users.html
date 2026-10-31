@@ -1,0 +1,42 @@
+{% extends "layouts/settings.html" %}
+{% load codeguard_tags %}
+{% block title %}Users and roles · Settings{% endblock %}
+{% block settings_title %}Users and roles{% endblock %}
+{% block settings_body %}
+<header><h1>Users and roles</h1><p>Only administrators can change roles. You cannot change your own role, and superusers are always administrators. Every change is recorded in the audit log.</p></header>
+<div class="cg-panel cg-panel--flush">
+  <div class="table-responsive">
+    <table class="table" aria-label="Users and their roles">
+      <thead><tr><th scope="col">User</th><th scope="col">Joined</th><th scope="col">Role</th></tr></thead>
+      <tbody>
+        {% for u in page_obj %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="cg-avatar" aria-hidden="true">{{ u|display_initials }}</span>
+              <span><strong>{{ u.get_full_name|default:u.get_username }}</strong>{% if u == user %} <span class="tag">you</span>{% endif %}{% if u.is_superuser %} <span class="tag">superuser</span>{% endif %}<span class="cg-cell-sub">@{{ u.get_username }}{% if u.email %} · {{ u.email }}{% endif %}</span></span>
+            </div>
+          </td>
+          <td class="small text-nowrap">{{ u.date_joined|date:"Y-m-d" }}</td>
+          <td>
+            {% if u == user or u.is_superuser %}
+            <span class="tag">{{ u.codeguard_role|title }}</span>
+            {% else %}
+            <form method="post" action="{% url 'settings:change_role' u.pk %}" class="d-flex gap-2" data-confirm="Change the role of {{ u.get_username }}?">
+              {% csrf_token %}
+              <label class="visually-hidden" for="role-{{ u.pk }}">Role for {{ u.get_username }}</label>
+              <select class="form-select form-select-sm w-auto" id="role-{{ u.pk }}" name="role">
+                {% for value, label in roles %}<option value="{{ value }}" {% if u.codeguard_role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+              </select>
+              <button class="btn btn-sm btn-outline-secondary" type="submit">Save<span class="visually-hidden"> role for {{ u.get_username }}</span></button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} users</span>{% include "components/pagination.html" %}</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Simulations{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Simulations</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-play-circle" aria-hidden="true"></i> Simulate</div>
+    <h1>Simulations</h1>
+    <p class="lede">Start from a threat scenario, decide which controls are in place, and run it. The same configuration always produces the same result, so you can change one thing at a time and compare.</p>
+  </div>
+  {% if user_can_simulate %}
+  <div class="cg-page-actions"><a class="btn btn-primary" href="{% url 'simulation:configure' %}"><i class="bi bi-sliders" aria-hidden="true"></i> Configure a simulation</a></div>
+  {% endif %}
+</div>
+
+{% if not user_can_simulate %}
+<div class="cg-note mb-5"><i class="bi bi-eye" aria-hidden="true"></i><p>Your role can read shared results but cannot run simulations. Ask an administrator for the analyst role if you need to run your own. <a href="{% url 'simulation:results' %}">Browse shared results</a>.</p></div>
+{% endif %}
+
+<div class="cg-split">
+  <div>
+    <section class="cg-section" aria-labelledby="launch-h">
+      <div class="cg-section-head"><div><h2 id="launch-h">Start from a scenario</h2><p>{{ scenario_count }} active scenario{{ scenario_count|pluralize }} you can use, grouped by where the attack begins.</p></div></div>
+      {% for stage, scenarios in by_stage %}
+      <h3 class="cg-divider-text"><i class="bi bi-{{ stage.icon }}" aria-hidden="true"></i> Starts at {{ stage.name }}</h3>
+      <div class="cg-card-grid mb-2">
+        {% for s in scenarios %}
+        <article class="cg-card">
+          <div class="cg-tags">{% if s.visibility == 'private' %}<span class="tag"><i class="bi bi-lock" aria-hidden="true"></i> Private</span>{% endif %}<span class="tag tag-mono">{{ s.rules.all|length }} rule{{ s.rules.all|length|pluralize }}</span></div>
+          <h3><a href="{% url 'threats:detail' s.slug %}">{{ s.name }}</a></h3>
+          <p>{{ s.description|truncatechars:120 }}</p>
+          <div class="cg-card-foot">
+            <span class="small text-muted">Likelihood {{ s.likelihood }}% · severity {{ s.severity }}/5</span>
+            {% if user_can_simulate %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'simulation:configure' %}?scenario={{ s.slug }}"><i class="bi bi-play-fill" aria-hidden="true"></i> Configure<span class="visually-hidden"> a run of {{ s.name }}</span></a>{% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% empty %}
+      <div class="cg-panel"><div class="cg-empty">{% include "illustrations/empty.html" with kind="search" %}<h3>No active scenarios</h3><p>Restore an archived scenario or create a new one in the threat library.</p><a class="btn btn-outline-secondary" href="{% url 'threats:list' %}">Open the threat library</a></div></div>
+      {% endfor %}
+    </section>
+  </div>
+  <aside class="cg-stack cg-sticky" aria-label="Your recent runs and guidance">
+    <section class="cg-panel cg-panel--flush" aria-labelledby="recent-h">
+      <div class="cg-panel-head"><h2 id="recent-h">Your recent runs</h2><a class="cg-more-link" href="{% url 'simulation:results' %}?scope=mine">All</a></div>
+      <ul class="cg-row-list">
+        {% for run in recent %}
+        <li>
+          <span><a href="{% url 'simulation:detail' run.id %}">{{ run.scenario_name }}</a><span class="cg-cell-sub">{% when run.created_at %} · {{ run.enabled_controls|length }} control{{ run.enabled_controls|length|pluralize }}</span></span>
+          {% if run.residual_risk is not None %}<span class="cg-badge risk-{{ run.classification }}">{{ run.residual_risk }}</span>{% else %}{% include "components/status.html" with status=run.status label=run.get_status_display %}{% endif %}
+        </li>
+        {% empty %}
+        <li class="text-muted">No runs yet.</li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="cg-panel cg-panel-body" aria-labelledby="tips-h">
+      <h2 id="tips-h" class="h6">A useful rhythm</h2>
+      <ol class="cg-explain small mt-3">
+        <li>Run a scenario with no controls to see its inherent risk.</li>
+        <li>Rerun it with the controls you actually have.</li>
+        <li>Add the top recommendation and compare the two runs in Risk analysis.</li>
+      </ol>
+    </section>
+  </aside>
+</div>
+{% endblock %}

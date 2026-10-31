@@ -1,0 +1,30 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Account · Settings{% endblock %}
+{% block settings_title %}Account{% endblock %}
+{% block settings_body %}
+<header><h1>Account</h1><p>Your sign-in identity and the email address used for password resets.</p></header>
+<section class="cg-settings-section" aria-labelledby="facts-h">
+  <h2 id="facts-h">Account details</h2>
+  <dl class="cg-ledger">
+    <dt>Username</dt><dd><code>{{ user.get_username }}</code> <span class="small text-muted">· usernames cannot be changed</span></dd>
+    <dt>Email</dt><dd>{{ user.email|default:"Not set" }}</dd>
+    <dt>Role</dt><dd>{{ role|title }} <span class="small text-muted">· assigned by an administrator</span></dd>
+    <dt>Member since</dt><dd>{{ user.date_joined|date:"j F Y" }}</dd>
+    <dt>Last sign-in</dt><dd>{{ user.last_login|date:"Y-m-d H:i"|default:"—" }}</dd>
+  </dl>
+</section>
+<section class="cg-settings-section" aria-labelledby="email-h">
+  <h2 id="email-h">Change email address</h2>
+  <p class="cg-section-help">Password reset links are sent to this address. Changing it is recorded in the audit log and appears in your security notifications.</p>
+  <form method="post" novalidate data-loading>
+    {% csrf_token %}
+    {% for field in form %}{% include "components/field.html" %}{% endfor %}
+    <div class="cg-form-actions"><button class="btn btn-primary" type="submit"><span class="btn-label">Change email</span><span class="btn-loading">Saving…</span></button></div>
+  </form>
+</section>
+<section class="cg-settings-section" aria-labelledby="data-h">
+  <h2 id="data-h">Your data</h2>
+  <p class="cg-section-help">Download everything CodeGuard stores about you, or manage how your reports are shared.</p>
+  <a class="btn btn-outline-secondary" href="{% url 'settings:privacy' %}">Privacy and data</a>
+</section>
+{% endblock %}

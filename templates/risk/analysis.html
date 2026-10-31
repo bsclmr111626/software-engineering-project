@@ -1,0 +1,152 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Risk analysis{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Risk analysis</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i> Analyze</div>
+    <h1>Risk analysis</h1>
+    <p class="lede">How inherent risk compares with residual risk across your simulations, where along the chain exposure concentrates, and which controls do the most work.</p>
+  </div>
+</div>
+
+<form method="get" class="cg-filterbar" aria-label="Scope of the analysis">
+  <div class="cg-filter">
+    <span class="form-label">Runs</span>
+    <div class="cg-segmented">{% for key, label in scopes.items %}<a href="{% query_with scope=key %}"{% if key == scope %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</div>
+  </div>
+  <input type="hidden" name="scope" value="{{ scope }}">
+  <div class="cg-filter">
+    <label class="form-label" for="f-scenario">Scenario</label>
+    <select class="form-select" id="f-scenario" name="scenario">
+      <option value="">All scenarios</option>
+      {% for slug, name in analysis.scenario_options %}<option value="{{ slug }}"{% if slug == scenario %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="d-flex gap-2"><button class="btn btn-outline-secondary" type="submit">Apply</button>{% if scenario or scope != 'all' %}<a class="btn btn-ghost" href="{% url 'core:risk' %}">Reset</a>{% endif %}</div>
+</form>
+
+{% if analysis.total %}
+<section class="cg-section" aria-label="Summary">
+  <div class="cg-metrics">
+    <div class="cg-metric"><div class="cg-metric-label">Runs analysed</div><div class="cg-metric-value">{{ analysis.total }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label"><span class="cg-key key-inherent" aria-hidden="true"></span>Average inherent risk</div><div class="cg-metric-value">{{ analysis.inherent }}</div><div class="cg-metric-sub">{{ analysis.inherent|risk_class|title }}, before controls</div></div>
+    <div class="cg-metric"><div class="cg-metric-label"><span class="cg-key key-residual" aria-hidden="true"></span>Average residual risk</div><div class="cg-metric-value">{{ analysis.residual }}</div><div class="cg-metric-sub">{{ analysis.residual|risk_class|title }}, with the controls each run enabled</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Average modeled reduction</div><div class="cg-metric-value delta-down">−{{ analysis.reduction }}</div><div class="cg-metric-sub">Points of overall risk removed by controls</div></div>
+  </div>
+  <div class="cg-tags mt-3" aria-label="Runs by residual class">
+    {% for band, count in analysis.bands %}<span class="cg-badge risk-{{ band }}"><i class="bi {{ band|risk_icon }}" aria-hidden="true"></i>{{ band|title }}: {{ count }}</span>{% endfor %}
+  </div>
+</section>
+
+<section class="cg-section cg-panel" aria-labelledby="trend-h">
+  <div class="cg-panel-head">
+    <div><h2 id="trend-h">Inherent and residual risk over time</h2><p>The {{ analysis.trend_runs|length }} most recent runs in this scope, oldest first. Dashed guides mark the class boundaries.</p></div>
+    <ul class="cg-legend" aria-label="Series"><li><span class="line line-inherent" aria-hidden="true"></span>Inherent risk</li><li><span class="line line-residual" aria-hidden="true"></span>Residual risk</li></ul>
+  </div>
+  <div class="cg-panel-body">
+    {% with c=analysis.trend %}
+    <div class="cg-chart-scroll">
+    <svg class="cg-chart-svg" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img" aria-labelledby="trend-h" aria-describedby="trend-desc">
+      <desc id="trend-desc">{% for col in c.columns %}{{ col.run.scenario_name }} on {{ col.label }}: inherent {{ col.run.inherent_risk }}, residual {{ col.run.residual_risk }}. {% endfor %}</desc>
+      {% for t in c.ticks %}<line class="grid" x1="{{ c.plot_left }}" x2="{{ c.plot_right }}" y1="{{ t.y }}" y2="{{ t.y }}"/><text class="tick" x="{{ c.plot_left|add:-8 }}" y="{{ t.y|add:4 }}" text-anchor="end">{{ t.v }}</text>{% endfor %}
+      {% for g in c.guides %}<line class="guide" x1="{{ c.plot_left }}" x2="{{ c.plot_right }}" y1="{{ g.y }}" y2="{{ g.y }}"/>{% endfor %}
+      {% for col in c.columns %}
+      <rect class="hit" x="{{ col.left }}" y="{{ c.plot_top }}" width="{{ col.w }}" height="{{ c.plot_height }}" tabindex="0" data-tip="{{ col.run.scenario_name }} · {{ col.label }}|Inherent {{ col.run.inherent_risk }} · Residual {{ col.run.residual_risk }}"><title>{{ col.run.scenario_name }}: inherent {{ col.run.inherent_risk }}, residual {{ col.run.residual_risk }}</title></rect>
+      {% if col.show_label %}<text class="tick" x="{{ col.x }}" y="{{ c.label_y }}" text-anchor="middle">{{ col.label }}</text>{% endif %}
+      {% endfor %}
+      {% for s in c.series %}
+      <path class="{{ s.cls }}" d="{{ s.path }}"/>
+      {% for p in s.points %}<circle class="pt pt-{{ s.cls }}" cx="{{ p.x }}" cy="{{ p.y }}" r="4"/>{% endfor %}
+      {% endfor %}
+    </svg>
+    </div>
+    {% endwith %}
+    <details class="cg-data">
+      <summary><i class="bi bi-table" aria-hidden="true"></i> Show as a table</summary>
+      <div class="table-responsive">
+        <table class="table table-sm" aria-label="Inherent and residual risk per run">
+          <thead><tr><th scope="col">Run</th><th scope="col">Date</th><th scope="col" class="num">Inherent</th><th scope="col" class="num">Residual</th></tr></thead>
+          <tbody>{% for r in analysis.trend_runs %}<tr><td><a href="{% url 'simulation:detail' r.id %}">{{ r.scenario_name }}</a></td><td>{{ r.created_at|date:"Y-m-d H:i" }}</td><td class="num">{{ r.inherent_risk }}</td><td class="num">{{ r.residual_risk }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+</section>
+
+<div class="cg-split--even cg-split cg-section">
+  <section class="cg-panel" aria-labelledby="stage-h">
+    <div class="cg-panel-head">
+      <div><h2 id="stage-h">Exposure by stage</h2><p>Average inherent and residual risk of each stage.</p></div>
+      <ul class="cg-legend" aria-label="Series"><li><span class="cg-key key-inherent" aria-hidden="true"></span>Inherent</li><li><span class="cg-key key-residual" aria-hidden="true"></span>Residual</li></ul>
+    </div>
+    <div class="cg-panel-body">
+      {% with c=analysis.stage_chart %}
+      <div class="cg-chart-scroll">
+      <svg class="cg-chart-svg" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img" aria-labelledby="stage-h" aria-describedby="stage-desc">
+        <desc id="stage-desc">{% for g in c.groups %}{{ g.label }}: inherent {{ g.a|default_if_none:"no data" }}, residual {{ g.b|default_if_none:"no data" }}. {% endfor %}</desc>
+        {% for t in c.ticks %}<line class="grid" x1="{{ c.plot_left }}" x2="{{ c.plot_right }}" y1="{{ t.y }}" y2="{{ t.y }}"/><text class="tick" x="{{ c.plot_left|add:-8 }}" y="{{ t.y|add:4 }}" text-anchor="end">{{ t.v }}</text>{% endfor %}
+        {% for g in c.groups %}
+        <rect class="hit" x="{{ g.band_x }}" y="{{ c.plot_top }}" width="{{ g.band_w }}" height="{{ c.plot_height }}" tabindex="0" data-tip="{{ g.label }}|Inherent {{ g.a|default_if_none:'—' }} · Residual {{ g.b|default_if_none:'—' }} · compromised {{ g.compromised }} of {{ g.runs }}"><title>{{ g.label }}: inherent {{ g.a }}, residual {{ g.b }}</title></rect>
+        {% if g.ah %}<rect class="bar-inherent" x="{{ g.ax }}" y="{{ g.ay }}" width="{{ c.column }}" height="{{ g.ah }}" rx="3"/>{% endif %}
+        {% if g.bh %}<rect class="bar-residual" x="{{ g.bx }}" y="{{ g.by }}" width="{{ c.column }}" height="{{ g.bh }}" rx="3"/>{% endif %}
+        <text class="cat" x="{{ g.cx }}" y="{{ c.label_y }}" text-anchor="middle">{{ g.label|truncatechars:16 }}</text>
+        {% endfor %}
+        <line class="baseline" x1="{{ c.plot_left }}" x2="{{ c.plot_right }}" y1="{{ c.baseline }}" y2="{{ c.baseline }}"/>
+      </svg>
+      </div>
+      {% endwith %}
+      <details class="cg-data">
+        <summary><i class="bi bi-table" aria-hidden="true"></i> Show as a table</summary>
+        <table class="table table-sm" aria-label="Average risk and outcomes per stage">
+          <thead><tr><th scope="col">Stage</th><th scope="col" class="num">Inherent</th><th scope="col" class="num">Residual</th><th scope="col" class="num">Compromised</th></tr></thead>
+          <tbody>{% for r in analysis.stage_rows %}<tr><td><a href="{% url 'core:stage_detail' r.key %}">{{ r.label }}</a></td><td class="num">{{ r.a|default_if_none:"—" }}</td><td class="num">{{ r.b|default_if_none:"—" }}</td><td class="num">{{ r.compromised }} of {{ r.runs }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <section class="cg-panel" aria-labelledby="ctl-h">
+    <div class="cg-panel-head"><div><h2 id="ctl-h">Effect of controls</h2><p>Average reduction in overall residual risk each enabled control contributed, measured by re-running without it.</p></div></div>
+    <div class="cg-panel-body">
+      {% if analysis.control_rows %}
+      {% with c=analysis.control_chart %}
+      <svg class="cg-chart-svg" viewBox="-190 0 {{ c.width|add:190 }} {{ c.height }}" role="img" aria-labelledby="ctl-h" aria-describedby="ctl-desc">
+        <desc id="ctl-desc">{% for r in c.rows %}{{ r.label }}: minus {{ r.value }}. {% endfor %}</desc>
+        <line class="baseline" x1="0" x2="0" y1="0" y2="{{ c.height }}"/>
+        {% for r in c.rows %}
+        <text class="cat" x="-10" y="{{ r.text_y }}" text-anchor="end">{{ r.label|truncatechars:28 }}</text>
+        <rect class="hit hit-bar" x="-190" y="{{ r.hit_y }}" width="{{ c.width|add:190 }}" height="{{ c.row_height }}" tabindex="0" data-tip="{{ r.tip }}"><title>{{ r.tip }}</title></rect>
+        {% if r.w %}<rect class="mark {{ r.cls }}" x="{{ r.x }}" y="{{ r.y }}" width="{{ r.w }}" height="{{ r.h }}" rx="3"/>{% endif %}
+        <text class="value" x="{{ r.text_x }}" y="{{ r.text_y }}">−{{ r.value }}</text>
+        {% endfor %}
+      </svg>
+      {% endwith %}
+      <details class="cg-data">
+        <summary><i class="bi bi-table" aria-hidden="true"></i> Show as a table</summary>
+        <table class="table table-sm" aria-label="Average contribution of each control">
+          <thead><tr><th scope="col">Control</th><th scope="col" class="num">Runs</th><th scope="col" class="num">Average reduction</th></tr></thead>
+          <tbody>{% for r in analysis.control_rows %}<tr><td><a href="{% url 'threats:control_detail' r.slug %}">{{ r.name }}</a></td><td class="num">{{ r.runs }}</td><td class="num">−{{ r.average }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </details>
+      {% else %}
+      <div class="cg-empty py-4">{% include "illustrations/empty.html" with kind="check" %}<p>None of these runs enabled a control. Rerun a scenario with controls to see their effect.</p></div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% else %}
+<div class="cg-panel cg-section"><div class="cg-empty">
+  {% include "illustrations/empty.html" with kind="graph" %}
+  <h2>No completed runs in this scope</h2>
+  <p>Risk analysis summarises completed simulations. Run one, or widen the scope above.</p>
+  {% if user_can_simulate %}<a class="btn btn-primary" href="{% url 'simulation:configure' %}">Run a simulation</a>{% endif %}
+</div></div>
+{% endif %}
+
+<section class="cg-section" aria-labelledby="cmp-h">
+  <div class="cg-section-head"><div><h2 id="cmp-h">Compare two runs</h2><p>Typically the same scenario before and after adding controls.</p></div></div>
+  {% include "simulation/_compare_form.html" with runs=compare_runs %}
+</section>
+{% endblock %}

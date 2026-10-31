@@ -1,0 +1,49 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ item.control.name }} · Remediation{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'remediation:plan' %}">Remediation</a></li><li aria-current="page">{{ item.control.name }}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-tags mb-3">{% include "components/status.html" with status=item.status label=item.get_status_display %}{% if verified_by %}<span class="tag tag-strong"><i class="bi bi-patch-check" aria-hidden="true"></i> Verified by a re-run</span>{% endif %}</div>
+    <h1>{{ item.control.name }}</h1>
+    <p class="lede">For the scenario <strong>{{ item.scenario_name }}</strong>. Added {{ item.created_at|date:"Y-m-d" }}{% if item.closed_at %}, closed {{ item.closed_at|date:"Y-m-d" }}{% endif %}.</p>
+  </div>
+</div>
+<div class="cg-split">
+  <div>
+    <section class="cg-section" aria-labelledby="evidence-h">
+      <div class="cg-section-head"><h2 id="evidence-h">Modeled effect</h2></div>
+      <div>
+        <dl class="cg-ledger">
+          <dt>Source report</dt>
+          <dd>{% if item.source_run %}<a href="{% url 'simulation:detail' item.source_run.pk %}">Run {{ item.source_run.short_id }}</a>, overall residual risk {{ item.baseline_risk }}{% else %}Deleted (overall residual risk was {{ item.baseline_risk }}){% endif %}</dd>
+          <dt>Expected reduction when added</dt>
+          <dd><span class="cg-badge risk-low"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ item.expected_reduction }}</span> points of overall residual risk</dd>
+          <dt>Verification</dt>
+          <dd class="mb-0">{% if verified_by %}Confirmed by <a href="{% url 'simulation:detail' verified_by.pk %}">run {{ verified_by.short_id }}</a> ({{ verified_by.created_at|date:"Y-m-d H:i" }} UTC) with the control enabled: overall residual risk {{ item.baseline_risk }} → {{ verified_by.residual_risk }}.{% else %}Not verified yet. Re-run <em>{{ item.scenario_name }}</em> with this control enabled to confirm the modeled effect.{% endif %}</dd>
+        </dl>
+        <p class="small text-muted mt-3 mb-0">These are outputs of the CodeGuard model, not measurements of your environment. The control's assumptions and limitations are on its <a href="{% url 'threats:control_detail' item.control.slug %}">catalog page</a>.</p>
+      </div>
+    </section>
+  </div>
+  <div>
+    <section class="cg-panel" aria-labelledby="update-h">
+      <div class="cg-panel-head"><h2 id="update-h">Status and notes</h2></div>
+      <div class="cg-panel-body">
+        {% if can_edit %}
+        <form method="post" novalidate data-loading>
+          {% csrf_token %}
+          {% for field in form %}{% include "components/field.html" %}{% endfor %}
+          <button class="btn btn-primary" type="submit"><span class="btn-label">Save changes</span><span class="btn-loading">Saving…</span></button>
+        </form>
+        {% else %}
+        <dl class="cg-ledger">
+          <dt>Due</dt><dd>{{ item.due_date|date:"Y-m-d"|default:"—" }}</dd>
+          <dt>Notes</dt><dd class="mb-0">{{ item.note|default:"—"|linebreaksbr }}</dd>
+        </dl>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

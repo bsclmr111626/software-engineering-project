@@ -1,0 +1,12 @@
+{% if messages %}
+<div class="cg-messages">
+  {% for message in messages %}
+  {# Errors interrupt (role=alert); confirmations are announced politely (role=status). #}
+  <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show d-flex align-items-start gap-2" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">
+    <i class="bi {% if message.tags == 'success' %}bi-check-circle{% elif message.tags == 'error' %}bi-x-octagon{% elif message.tags == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %}" aria-hidden="true"></i>
+    <div>{{ message }}</div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss message"></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

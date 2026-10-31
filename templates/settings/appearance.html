@@ -1,0 +1,13 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Appearance · Settings{% endblock %}
+{% block settings_title %}Appearance and theme{% endblock %}
+{% block settings_body %}
+<header><h1>Appearance and theme</h1><p>Saved to your account, so CodeGuard looks the same on every device you sign in from.</p></header>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include "settings/_choices.html" with field=form.color_mode preview="mode" help="“Match my device” follows your operating system's light or dark setting. The sun and moon button in the header switches between light and dark and saves that choice here." %}
+  {% include "settings/_choices.html" with field=form.surface preview="surface" help="Paper uses warm, editorial backgrounds throughout. Pearl puts your work on pure white panels over cool, pearl-white backgrounds with no warmth, and Sage gives that pearl white a faint green-grey cast. Applies to the light theme; the dark theme is the same for all three." %}
+  {% include "settings/_choices.html" with field=form.accent preview="accent" help="The colour of primary buttons, links, focus outlines and the active navigation item. Risk colours never change, so their meaning stays consistent." %}
+  <div class="cg-form-actions"><button class="btn btn-primary" type="submit">Save appearance</button></div>
+</form>
+{% endblock %}

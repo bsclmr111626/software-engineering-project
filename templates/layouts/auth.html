@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="cg-auth">
+  <aside class="cg-auth-art" aria-label="About CodeGuard">
+    {% include "partials/brand.html" with href="/" on_ink=True %}
+    <div aria-hidden="true">{% include "illustrations/lattice.html" %}</div>
+    <div>
+      <blockquote class="mb-0">Every stage inherits the weaknesses of the one before it.</blockquote>
+      <p class="mt-3">CodeGuard traces how a single compromise could move from a developer's workstation to production, and what each control changes along the way.</p>
+    </div>
+  </aside>
+  <div class="cg-auth-panel">
+    <header class="cg-auth-panel-top">
+      <span class="d-lg-none">{% include "partials/brand.html" with href="/" %}</span>
+      <span class="d-none d-lg-inline"><a class="cg-more-link" href="/"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to the product page</a></span>
+      {% include "partials/theme_toggle.html" %}
+    </header>
+    <main id="main" class="cg-auth-form" tabindex="-1">
+      {% include "components/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

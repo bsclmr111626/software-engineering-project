@@ -1,0 +1,143 @@
+{% extends "layouts/app.html" %}
+{% block title %}New simulation{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'simulation:hub' %}">Simulations</a></li><li aria-current="page">New simulation</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-sliders" aria-hidden="true"></i> Simulate</div>
+    <h1>Configure a simulation</h1>
+    <p class="lede">Choose a scenario, review its inputs and select the security controls that are in place. Nothing is saved until you run it.</p>
+  </div>
+</div>
+
+<ol class="cg-steps" data-stepper-nav aria-label="Configuration steps">
+  <li{% if not scenario %} aria-current="step"{% else %} class="is-done"{% endif %}><span class="cg-step-label">Scenario</span></li>
+  <li data-step-tab="inputs"{% if scenario %} aria-current="step"{% endif %}><span class="cg-step-label">Inputs</span></li>
+  <li data-step-tab="controls"><span class="cg-step-label">Controls</span></li>
+  <li data-step-tab="review"><span class="cg-step-label">Review and run</span></li>
+</ol>
+
+<form method="get" class="cg-panel cg-panel-body mb-4" aria-label="Choose scenario">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-8">
+      <label class="form-label" for="pick-scenario">Scenario</label>
+      <select class="form-select" id="pick-scenario" name="scenario">
+        <option value="">Choose a scenario…</option>
+        {% for s in form.fields.scenario.queryset %}
+        <option value="{{ s.slug }}" {% if scenario and scenario.slug == s.slug %}selected{% endif %}>{{ s.name }}{% if s.visibility == 'private' %} (private){% endif %} — entry: {{ s.initial_stage.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4"><button class="btn btn-outline-secondary w-100" type="submit">{% if scenario %}Load a different scenario{% else %}Load scenario{% endif %}</button></div>
+  </div>
+</form>
+
+{% if scenario %}
+<form method="post" novalidate data-loading data-stepper>
+  {% csrf_token %}
+  <input type="hidden" name="scenario" value="{{ scenario.slug }}">
+  {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+  {% if form.scenario.errors %}<div class="alert alert-danger" role="alert">{{ form.scenario.errors|join:" " }}</div>{% endif %}
+
+  <fieldset class="cg-step-panel" data-step="inputs" aria-labelledby="inputs-h">
+    <div class="cg-split">
+      <div>
+        <h2 id="inputs-h" class="cg-section-title mb-2">Review the inputs</h2>
+        <p class="text-muted">Values default to the scenario's settings. Changing them affects only this run; the scenario itself is not edited.</p>
+        <div class="row">
+          <div class="col-sm-6">{% include "components/field.html" with field=form.likelihood %}</div>
+          <div class="col-sm-6">{% include "components/field.html" with field=form.threshold %}</div>
+          <div class="col-sm-6">{% include "components/field.html" with field=form.severity %}</div>
+          <div class="col-sm-6">{% include "components/field.html" with field=form.impact %}</div>
+        </div>
+      </div>
+      <aside class="cg-panel cg-panel-body">
+        <div class="cg-eyebrow mb-2">Scenario</div>
+        <h3 class="h5"><a class="cg-link-quiet" href="{% url 'threats:detail' scenario.slug %}">{{ scenario.name }}</a></h3>
+        <p class="small text-muted">{{ scenario.description|truncatechars:220 }}</p>
+        <dl class="cg-ledger cg-ledger--compact small">
+          <dt>Entry point</dt><dd>{{ scenario.initial_stage.name }}</dd>
+          <dt>Propagation rules</dt><dd>{{ scenario.rules.count }}</dd>
+          <dt>Version</dt><dd>{{ scenario.version }}</dd>
+        </dl>
+      </aside>
+    </div>
+    {% if pipeline %}
+    <div class="cg-pipeline-frame mt-4">
+      {% include "components/pipeline.html" with svg_id="config-graph" svg_title="Propagation rules of the selected scenario" %}
+    </div>
+    {% endif %}
+  </fieldset>
+
+  <fieldset class="cg-step-panel" data-step="controls" aria-labelledby="controls-h">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+      <div>
+        <h2 id="controls-h" class="cg-section-title mb-1">Security controls in place</h2>
+        <p class="text-muted mb-0">Tip: run once with no controls to see the inherent picture, then rerun with controls and compare. <span class="tag tag-strong">Relevant</span> marks controls linked to this scenario.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="select-applicable">Select scenario-relevant</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="select-all-controls">Select all</button>
+        <button type="button" class="btn btn-sm btn-ghost" id="clear-controls">Clear</button>
+      </div>
+    </div>
+    {% if form.controls.errors %}<div class="invalid-feedback d-block mb-2">{{ form.controls.errors|join:" " }}</div>{% endif %}
+    {% for category, heading in categories %}
+    <div class="cg-control-group">
+      <h3>{{ heading }}</h3>
+      <div class="row row-cols-1 row-cols-md-2 g-2">
+        {% for choice in form.controls %}
+        {% with c=choice.data.value.instance %}
+        {% if c.category == category %}
+        <div class="col">
+          <div class="cg-control-option {% if c.slug in applicable %}is-applicable{% endif %}">
+            <input class="form-check-input" type="checkbox" name="controls" value="{{ choice.data.value }}" id="{{ choice.id_for_label }}" data-applicable="{% if c.slug in applicable %}1{% else %}0{% endif %}" {% if choice.data.selected %}checked{% endif %}>
+            <div>
+              <label for="{{ choice.id_for_label }}">{{ c.name }}</label>{% if c.slug in applicable %} <span class="tag tag-strong">Relevant</span>{% endif %}
+              <div class="small text-muted">{{ c.effectiveness }}% · {% for s in c.stages.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="cg-step-panel" data-step="review" aria-labelledby="review-h">
+    <h2 id="review-h" class="cg-section-title mb-2">Review and run</h2>
+    <p class="text-muted">The run stores a snapshot of these inputs, so its report will never change, even if the scenario is edited later.</p>
+    <dl class="cg-review mb-4">
+      <div><dt>Scenario</dt><dd>{{ scenario.name }}</dd></div>
+      <div><dt>Base likelihood</dt><dd data-review-of="id_likelihood">{{ form.likelihood.value }}</dd></div>
+      <div><dt>Severity / impact</dt><dd><span data-review-of="id_severity">{{ form.severity.value }}</span> / <span data-review-of="id_impact">{{ form.impact.value }}</span></dd></div>
+      <div><dt>Threshold</dt><dd data-review-of="id_threshold">{{ form.threshold.value }}</dd></div>
+      <div><dt>Controls enabled</dt><dd data-review-controls>—</dd></div>
+    </dl>
+  </fieldset>
+
+  <div class="cg-step-nav">
+    <a class="btn btn-ghost" href="{% url 'threats:detail' scenario.slug %}">Cancel</a>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary" data-step-back hidden><i class="bi bi-arrow-left" aria-hidden="true"></i> Back</button>
+      <button type="button" class="btn btn-outline-secondary" data-step-next hidden>Next <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+      <button class="btn btn-primary" type="submit" data-step-submit><span class="btn-label"><i class="bi bi-play-fill" aria-hidden="true"></i> Run simulation</span><span class="btn-loading">Running simulation…</span></button>
+    </div>
+  </div>
+</form>
+{% else %}
+{% if form.is_bound and form.errors %}
+<div class="alert alert-danger" role="alert">
+  <strong>The simulation was not run.</strong>
+  {% if form.scenario.errors %}The selected scenario is not available to you (it may be private, archived or deleted). Choose one of the scenarios listed above.{% else %}{% for e in form.non_field_errors %}{{ e }} {% endfor %}{% endif %}
+</div>
+{% endif %}
+<div class="cg-panel"><div class="cg-empty">
+  {% include "illustrations/empty.html" with kind="graph" %}
+  <h2>Choose a scenario to begin</h2>
+  <p>Select one of the scenarios above, or <a href="{% url 'threats:list' %}">browse the threat library</a> to read them first.</p>
+</div></div>
+{% endif %}
+{% endblock %}

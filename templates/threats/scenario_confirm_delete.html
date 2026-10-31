@@ -1,0 +1,16 @@
+{% extends "layouts/app.html" %}
+{% block title %}Delete {{ scenario.name }}{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'threats:list' %}">Threat library</a></li><li><a href="{% url 'threats:detail' scenario.slug %}">{{ scenario.name }}</a></li><li aria-current="page">Delete</li>{% endblock %}
+{% block content %}
+<div class="cg-settings-body">
+  <div class="cg-eyebrow"><i class="bi bi-trash text-danger" aria-hidden="true"></i> Permanent action</div>
+  <h1 class="mb-3">Delete this scenario?</h1>
+  <p class="lede">You are about to permanently delete <strong>{{ scenario.name }}</strong> and its propagation rules.</p>
+  <div class="cg-note my-4"><i class="bi bi-journal-richtext" aria-hidden="true"></i><p>{{ run_count }} simulation report{{ run_count|pluralize }} used this scenario. They are preserved with their stored snapshot and will show the scenario as deleted. Consider archiving instead if you may need it again.</p></div>
+  <form method="post" class="d-flex gap-2">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Delete permanently</button>
+    <a class="btn btn-outline-secondary" href="{% url 'threats:detail' scenario.slug %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

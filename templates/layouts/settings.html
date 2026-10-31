@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% block breadcrumbs %}<li><a href="{% url 'settings:index' %}">Settings</a></li><li aria-current="page">{% block settings_title %}{% endblock %}</li>{% endblock %}
+{% block content %}
+<div class="cg-settings">
+  <nav class="cg-settings-nav" aria-label="Settings">
+    {% for group, items in settings_groups %}
+    <div class="cg-nav-group" role="group" aria-label="{{ group }}">
+      <div class="cg-nav-label">{{ group }}</div>
+      {% for name, label, icon in items %}
+      <a class="cg-nav-link" href="{% url 'settings:'|add:name %}"{% if settings_page == name %} aria-current="page"{% endif %}><i class="bi {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span></a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </nav>
+  <div class="cg-settings-body">
+    {% block settings_body %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

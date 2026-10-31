@@ -1,0 +1,4 @@
+{% extends layout %}
+{% block title %}Methodology{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Methodology</li>{% endblock %}
+{% block content %}{% if user.is_authenticated %}{% include "core/_help_body.html" %}{% else %}<div class="cg-wrap cg-site-main--doc">{% include "core/_help_body.html" %}</div>{% endif %}{% endblock %}

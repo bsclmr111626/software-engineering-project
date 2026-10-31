@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block body_class %}cg-public{% endblock %}
+{% block body %}
+<div class="d-flex flex-column min-vh-100">
+<header class="cg-site-header">
+  <div class="cg-site-header-inner">
+    {% include "partials/brand.html" with href="/" %}
+    <nav class="cg-site-nav" aria-label="Site">
+      <a href="/#problem">Why it matters</a>
+      <a href="/#capabilities">Capabilities</a>
+      <a href="/#how-it-works">How simulations work</a>
+      <a href="{% url 'core:help' %}">Methodology</a>
+    </nav>
+    <div class="cg-site-actions">
+      {% include "partials/theme_toggle.html" %}
+      {% if user.is_authenticated %}
+      <a class="btn btn-primary btn-sm" href="{% url 'core:start' %}">Open CodeGuard <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+      {% else %}
+      <a class="btn btn-ghost btn-sm" href="{% url 'accounts:login' %}">Sign in</a>
+      {% if registration_open %}<a class="btn btn-primary btn-sm" href="{% url 'accounts:register' %}">Create an account</a>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+</header>
+<main id="main" class="cg-site-main{% block main_class %}{% endblock %}" tabindex="-1">
+  {% if messages %}<div class="cg-wrap pt-4">{% include "components/messages.html" %}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="cg-site-footer">
+  <div class="cg-wrap">
+    <div class="cg-site-footer-grid">
+      <div>
+        {% include "partials/brand.html" with href="/" %}
+        <p class="mt-3 mb-0">A transparent risk model for the software supply chain: hypothetical attack scenarios, propagation rules you can read, and controls whose effect you can measure inside the model.</p>
+      </div>
+      <div>
+        <h2>Product</h2>
+        <ul>
+          <li><a href="/#capabilities">Capabilities</a></li>
+          <li><a href="/#how-it-works">How simulations work</a></li>
+          <li><a href="/#roles">Roles and access</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Method</h2>
+        <ul>
+          <li><a href="{% url 'core:help' %}">Methodology</a></li>
+          <li><a href="{% url 'core:help' %}#lim-h">Model limitations</a></li>
+          <li><a href="{% url 'core:help' %}#risk-h">Risk scoring</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Account</h2>
+        <ul>
+          {% if user.is_authenticated %}
+          <li><a href="{% url 'core:start' %}">Open CodeGuard</a></li>
+          <li><a href="{% url 'settings:index' %}">Settings</a></li>
+          {% else %}
+          <li><a href="{% url 'accounts:login' %}">Sign in</a></li>
+          {% if registration_open %}<li><a href="{% url 'accounts:register' %}">Create an account</a></li>{% endif %}
+          <li><a href="{% url 'accounts:password_reset' %}">Reset your password</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <div class="cg-site-footer-base">
+      <span>CodeGuard never scans, attacks or connects to real systems. All scenarios are hypothetical and every number is a model output.</span>
+      <span>Not a replacement for a professional security assessment.</span>
+    </div>
+  </div>
+</footer>
+</div>
+{% endblock %}

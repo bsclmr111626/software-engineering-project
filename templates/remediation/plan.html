@@ -1,0 +1,67 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Remediation{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Remediation</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-list-check" aria-hidden="true"></i> Respond</div>
+    <h1>Remediation plan</h1>
+    <p class="lede">Controls you have committed to adopt, taken from report recommendations. An item counts as verified once you re-run the same scenario with the control enabled. Reductions are modeled estimates, not measured outcomes.</p>
+  </div>
+  <div class="cg-page-actions"><a class="btn btn-outline-secondary" href="{% url 'simulation:results' %}?scope=mine"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add from a result</a></div>
+</div>
+
+<section class="cg-section" aria-label="Plan summary">
+  <div class="cg-metrics">
+    <div class="cg-metric"><div class="cg-metric-label"><span class="cg-status cg-status-open"><span class="cg-status-dot" aria-hidden="true"></span></span>Open</div><div class="cg-metric-value">{{ summary.counts.open }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label"><span class="cg-status cg-status-in_progress"><span class="cg-status-dot" aria-hidden="true"></span></span>In progress</div><div class="cg-metric-value">{{ summary.counts.in_progress }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label"><i class="bi bi-calendar-x" aria-hidden="true"></i>Overdue</div><div class="cg-metric-value">{{ summary.overdue }}</div><div class="cg-metric-sub">{{ summary.unscheduled }} active item{{ summary.unscheduled|pluralize }} without a due date</div></div>
+    <div class="cg-metric"><div class="cg-metric-label"><i class="bi bi-arrow-down" aria-hidden="true"></i>Modeled reduction pending</div><div class="cg-metric-value">{{ summary.expected }}</div><div class="cg-metric-sub">Sum over active items; each is relative to its own scenario</div></div>
+  </div>
+</section>
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+  <nav class="cg-tabs mb-0 mt-0 flex-grow-1" aria-label="Filter by status">
+    {% for key, filter in filters.items %}
+    <a href="?status={{ key }}&amp;sort={{ sort }}"{% if key == current %} aria-current="page"{% endif %}>{{ filter.0 }}{% if key in summary.counts %} <span class="cg-tab-count">{{ summary.counts|get_item:key }}</span>{% elif key == 'active' %} <span class="cg-tab-count">{{ summary.active }}</span>{% endif %}</a>
+    {% endfor %}
+  </nav>
+  <form method="get" class="d-flex align-items-end gap-2" aria-label="Sort the plan">
+    <input type="hidden" name="status" value="{{ current }}">
+    <div><label class="form-label small mb-1" for="f-sort">Prioritise by</label>
+      <select class="form-select form-select-sm" id="f-sort" name="sort">{% for key, label in sorts.items %}<option value="{{ key }}"{% if key == sort %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Sort</button>
+  </form>
+</div>
+
+<div class="cg-panel cg-panel--flush">
+  {% if page_obj.object_list %}
+  <div class="table-responsive">
+    <table class="table" aria-label="Remediation items">
+      <thead><tr><th scope="col">Control</th><th scope="col">Status</th><th scope="col">Due</th><th scope="col" class="num">Expected reduction</th><th scope="col">Verification</th></tr></thead>
+      <tbody>
+        {% for item in page_obj %}
+        <tr>
+          <td><a href="{% url 'remediation:detail' item.pk %}">{{ item.control.name }}</a><span class="cg-cell-sub">{{ item.scenario_name }}</span></td>
+          <td>{% include "components/status.html" with status=item.status label=item.get_status_display %}</td>
+          <td class="small text-nowrap">{% if item.due_date %}{{ item.due_date|date:"Y-m-d" }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td class="num"><span class="cg-badge risk-low"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ item.expected_reduction }}</span></td>
+          <td class="small">{% if item.verified_by %}<i class="bi bi-patch-check text-success" aria-hidden="true"></i> <a href="{% url 'simulation:detail' item.verified_by.pk %}">Re-run {{ item.verified_by.short_id }}</a>: {{ item.baseline_risk }} → {{ item.verified_by.residual_risk }}{% else %}<span class="text-muted">Not re-run yet</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} items</span>{% include "components/pagination.html" %}</div>{% endif %}
+  {% else %}
+  <div class="cg-empty">
+    {% include "illustrations/empty.html" with kind="check" %}
+    <h2>No remediation items here</h2>
+    <p>Open a simulation result and choose <strong>Add to plan</strong> on a recommended control.</p>
+    <a class="btn btn-outline-secondary" href="{% url 'simulation:results' %}">Go to results</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

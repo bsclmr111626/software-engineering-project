@@ -1,0 +1,16 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Display · Settings{% endblock %}
+{% block settings_title %}Display{% endblock %}
+{% block settings_body %}
+<header><h1>Display</h1><p>How much fits on a page, how times are shown and where you land after signing in.</p></header>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include "settings/_choices.html" with field=form.density help="Compact tightens spacing in tables, panels and page margins so more fits on screen." %}
+  {% include "settings/_choices.html" with field=form.timestamp_style help="The exact time is always available in a tooltip and to screen readers." %}
+  <div class="row cg-settings-section">
+    <div class="col-sm-6">{% include "components/field.html" with field=form.page_size %}</div>
+    <div class="col-sm-6">{% include "components/field.html" with field=form.start_page %}</div>
+  </div>
+  <div class="cg-form-actions"><button class="btn btn-primary" type="submit">Save display settings</button></div>
+</form>
+{% endblock %}

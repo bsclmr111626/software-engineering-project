@@ -1,0 +1,27 @@
+{% load codeguard_tags %}
+<article class="cg-rec">
+  <div class="cg-rec-head">
+    <h3 class="h6 mb-1"><span class="cg-rec-rank">#{{ rank }}</span><a class="cg-link-quiet" href="{% url 'threats:control_detail' rec.control %}">{{ rec.name }}</a>{% if rec.scenario_applicable %} <span class="tag tag-strong">Relevant to scenario</span>{% endif %}</h3>
+    <span class="cg-badge risk-low"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ rec.current_risk }} → {{ rec.projected_risk }} (−{{ rec.risk_reduction }})</span>
+  </div>
+  <p class="small mb-1">{{ rec.reason }}</p>
+  {% if detailed %}
+  <p class="small text-muted mb-1"><strong>Why it is relevant:</strong> {{ rec.addresses }}</p>
+  {% if rec.edges_addressed %}<p class="small text-muted mb-1"><strong>Propagation paths affected:</strong> {{ rec.edges_addressed|join:"; " }}</p>{% endif %}
+  {% endif %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+    <div class="small text-muted">{{ rec.category|title }} · {{ rec.effort|title }} implementation effort · {{ rec.priority|title }} priority</div>
+    {% with item=tracked|get_item:rec.control %}
+    {% if item %}
+    <a class="cg-more-link" href="{% url 'remediation:detail' item.pk %}">On your plan: {{ item.get_status_display|lower }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+    {% elif user_can_simulate and run.status == 'completed' %}
+    <form method="post" action="{% url 'remediation:track' %}">
+      {% csrf_token %}
+      <input type="hidden" name="run" value="{{ run.pk }}">
+      <input type="hidden" name="control" value="{{ rec.control }}">
+      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add to plan<span class="visually-hidden">: {{ rec.name }}</span></button>
+    </form>
+    {% endif %}
+    {% endwith %}
+  </div>
+</article>

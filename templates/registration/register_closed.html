@@ -1,0 +1,7 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Registration closed{% endblock %}
+{% block content %}
+<h1>Registration is closed</h1>
+<p>Accounts on this CodeGuard deployment are created by an administrator. Ask your administrator for access.</p>
+<a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+{% endblock %}

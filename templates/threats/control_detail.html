@@ -1,0 +1,55 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ control.name }}{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'threats:controls' %}">Security controls</a></li><li aria-current="page">{{ control.name }}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-shield-check" aria-hidden="true"></i> {{ control.get_category_display }} control</div>
+    <h1>{{ control.name }}</h1>
+    <p class="lede">{{ control.description }}</p>
+  </div>
+</div>
+
+<section class="cg-section" aria-label="Model parameters">
+  <div class="cg-metrics">
+    <div class="cg-metric"><div class="cg-metric-label">Modeled effectiveness</div><div class="cg-metric-value">{{ control.effectiveness }}<small>%</small></div><progress class="cg-meter meter-accent mt-2" max="100" value="{{ control.effectiveness }}" aria-label="Modeled effectiveness {{ control.effectiveness }} percent">{{ control.effectiveness }}%</progress><div class="cg-metric-sub">Illustrative parameter</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Implementation effort</div><div class="cg-metric-value h4 mt-2 mb-0">{{ control.get_effort_display }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Priority</div><div class="cg-metric-value h4 mt-2 mb-0">{{ control.get_priority_display }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Protected stages</div><div class="cg-tags mt-2">{% for s in control.stages.all %}<a class="tag text-decoration-none" href="{% url 'core:stage_detail' s.key %}"><i class="bi bi-{{ s.icon }}" aria-hidden="true"></i> {{ s.name }}</a>{% endfor %}</div></div>
+  </div>
+</section>
+
+<div class="cg-split">
+  <div class="cg-doc">
+    <section aria-labelledby="what-h">
+      <h2 id="what-h" class="mt-0">What it addresses</h2>
+      <p>{{ control.addresses }}</p>
+      <h3>How the model applies it</h3>
+      {% if control.category == 'preventive' %}
+      <p>As a <strong>preventive</strong> control it reduces the probability of any propagation edge entering a protected stage (and the entry likelihood when the attack starts there) by {{ control.effectiveness }}%.</p>
+      <div class="cg-formula">80% × (1 − {{ control.effectiveness }}/100) = {{ example_effective|floatformat:1 }}%</div>
+      <p class="small text-muted mt-2">Example: an 80% edge into a protected stage becomes {{ example_effective|floatformat:1 }}%, which {% if example_effective >= 50 %}still meets{% else %}falls below{% endif %} the default 50% threshold.</p>
+      {% else %}
+      <p>As a <strong>{{ control.get_category_display|lower }}</strong> control it does not stop propagation. It reduces the residual risk of every protected stage that is reached by {{ control.effectiveness }}%.</p>
+      {% endif %}
+    </section>
+    <section aria-labelledby="assume-h">
+      <h2 id="assume-h">Assumptions and limitations</h2>
+      <h3>Why {{ control.effectiveness }}%</h3>
+      <p>{{ control.effectiveness_basis|default:"No basis has been recorded for this value." }}</p>
+      <h3>What it does not cover</h3>
+      <p>{{ control.limitations|default:"No limitations have been recorded." }}</p>
+    </section>
+  </div>
+  <aside>
+    <section class="cg-panel cg-panel--flush" aria-labelledby="sc-h">
+      <div class="cg-panel-head"><h2 id="sc-h">Scenarios where it is relevant</h2></div>
+      <ul class="cg-row-list">
+        {% for s in scenarios %}
+        <li><span><a href="{% url 'threats:detail' s.slug %}">{{ s.name }}</a><span class="cg-cell-sub">Entry: {{ s.initial_stage.name }}</span></span></li>
+        {% empty %}<li class="text-muted">Not linked to any active scenario you can see.</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

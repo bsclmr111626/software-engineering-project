@@ -1,0 +1,102 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}{{ stage.name }} · Supply chain{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'core:supply_chain' %}">Supply chain</a></li><li aria-current="page">{{ stage.name }}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-{{ stage.icon }}" aria-hidden="true"></i> Stage {{ stage.position }} of {{ stages|length }}</div>
+    <h1>{{ stage.name }}</h1>
+    <p class="lede">{{ stage.description }}</p>
+    <div class="cg-meta-line"><span><i class="bi bi-sliders" aria-hidden="true"></i> Criticality weight {{ stage.weight }} of 5</span><span><i class="bi bi-shield-check" aria-hidden="true"></i> {{ profile.controls|length }} protecting control{{ profile.controls|length|pluralize }}</span></div>
+  </div>
+  <div class="cg-page-actions">
+    {% if previous_stage %}<a class="btn btn-outline-secondary" href="{% url 'core:stage_detail' previous_stage.key %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> {{ previous_stage.name }}</a>{% endif %}
+    {% if next_stage %}<a class="btn btn-outline-secondary" href="{% url 'core:stage_detail' next_stage.key %}">{{ next_stage.name }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}
+  </div>
+</div>
+
+<nav class="cg-tabs" aria-label="Stages">
+  {% for s in stages %}<a href="{% url 'core:stage_detail' s.key %}"{% if s == stage %} aria-current="page"{% endif %}><i class="bi bi-{{ s.icon }}" aria-hidden="true"></i>{{ s.name }}</a>{% endfor %}
+</nav>
+
+<section class="cg-section" aria-label="Exposure in simulations">
+  <div class="cg-metrics">
+    <div class="cg-metric"><div class="cg-metric-label">Runs including this stage</div><div class="cg-metric-value">{{ profile.stats.runs }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Compromised</div><div class="cg-metric-value">{{ profile.stats.compromised }}</div><div class="cg-metric-sub">Entry point or compromised</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Blocked by controls</div><div class="cg-metric-value">{{ profile.stats.blocked }}</div><div class="cg-metric-sub">Would have propagated without controls</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Average risk</div><div class="cg-metric-value">{{ profile.stats.average_residual|default_if_none:"—" }}</div><div class="cg-metric-sub">{% if profile.stats.average_inherent is not None %}Residual; {{ profile.stats.average_inherent }} inherent{% else %}No runs yet{% endif %}</div></div>
+  </div>
+</section>
+
+<div class="cg-split">
+  <div>
+    <section class="cg-section" aria-labelledby="assets-h">
+      <div class="cg-section-head"><h2 id="assets-h">Assets at this stage</h2></div>
+      <ul class="cg-row-list cg-row-list--plain">
+        {% for asset in profile.assets %}<li><span><i class="bi bi-box" aria-hidden="true"></i> {{ asset }}</span></li>{% empty %}<li class="text-muted">No assets are recorded for this stage.</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="cg-section" aria-labelledby="paths-h">
+      <div class="cg-section-head"><div><h2 id="paths-h">How a compromise reaches and leaves this stage</h2><p>Propagation rules from the active scenarios you can see.</p></div></div>
+      <div class="cg-split--even cg-split">
+        <div class="cg-panel cg-panel--flush">
+          <div class="cg-panel-head"><h3>Inbound ({{ profile.inbound|length }})</h3></div>
+          <ul class="cg-row-list">
+            {% for r in profile.inbound %}<li><span>From <strong>{{ r.source.name }}</strong><span class="cg-cell-sub"><a href="{% url 'threats:detail' r.scenario.slug %}">{{ r.scenario.name }}</a></span></span><span class="tag tag-mono">{{ r.probability }}%</span></li>{% empty %}<li class="text-muted">No scenario propagates into this stage.</li>{% endfor %}
+          </ul>
+        </div>
+        <div class="cg-panel cg-panel--flush">
+          <div class="cg-panel-head"><h3>Outbound ({{ profile.outbound|length }})</h3></div>
+          <ul class="cg-row-list">
+            {% for r in profile.outbound %}<li><span>To <strong>{{ r.target.name }}</strong><span class="cg-cell-sub"><a href="{% url 'threats:detail' r.scenario.slug %}">{{ r.scenario.name }}</a></span></span><span class="tag tag-mono">{{ r.probability }}%</span></li>{% empty %}<li class="text-muted">No scenario propagates out of this stage.</li>{% endfor %}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="cg-section" aria-labelledby="hist-h">
+      <div class="cg-section-head"><div><h2 id="hist-h">Recent outcomes at this stage</h2><p>The latest completed runs visible to you.</p></div></div>
+      <div class="cg-panel cg-panel--flush">
+        <div class="table-responsive">
+          <table class="table" aria-label="Recent outcomes at {{ stage.name }}">
+            <thead><tr><th scope="col">Run</th><th scope="col">State</th><th scope="col" class="num">Inherent</th><th scope="col" class="num">Residual</th></tr></thead>
+            <tbody>
+              {% for r in profile.recent_results %}
+              <tr>
+                <td><a href="{% url 'simulation:detail' r.run_id %}">{{ r.run.scenario_name }}</a><span class="cg-cell-sub">{% when r.run.created_at %}</span></td>
+                <td><span class="cg-badge state-{{ r.state }}"><i class="bi {{ r.state|state_icon }}" aria-hidden="true"></i>{{ r.state|state_label }}</span></td>
+                <td class="num">{{ r.inherent_risk }}</td>
+                <td class="num"><span class="cg-badge risk-{{ r.classification }}">{{ r.residual_risk }}</span></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-muted">No completed runs yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="cg-stack" aria-label="Controls and scenarios for this stage">
+    <section class="cg-panel cg-panel--flush" aria-labelledby="ctl-h">
+      <div class="cg-panel-head"><h2 id="ctl-h">Protecting controls</h2></div>
+      <ul class="cg-row-list">
+        {% for c in profile.controls %}
+        <li><span><a href="{% url 'threats:control_detail' c.slug %}">{{ c.name }}</a><span class="cg-cell-sub">{{ c.get_category_display }} · {{ c.get_effort_display|lower }} effort</span></span><span class="tag tag-mono">{{ c.effectiveness }}%</span></li>
+        {% empty %}<li class="text-muted">No catalog control protects this stage.</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="cg-panel cg-panel--flush" aria-labelledby="entry-h">
+      <div class="cg-panel-head"><h2 id="entry-h">Scenarios that start here</h2></div>
+      <ul class="cg-row-list">
+        {% for s in profile.entry_scenarios %}
+        <li><span><a href="{% url 'threats:detail' s.slug %}">{{ s.name }}</a><span class="cg-cell-sub">Likelihood {{ s.likelihood }}% · severity {{ s.severity }}/5</span></span>{% if user_can_simulate %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'simulation:configure' %}?scenario={{ s.slug }}">Simulate<span class="visually-hidden"> {{ s.name }}</span></a>{% endif %}</li>
+        {% empty %}<li class="text-muted">No active scenario uses this stage as its entry point.</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

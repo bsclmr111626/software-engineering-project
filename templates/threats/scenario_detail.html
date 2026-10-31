@@ -1,0 +1,103 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}{{ scenario.name }}{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'threats:list' %}">Threat library</a></li><li aria-current="page">{{ scenario.name }}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-tags mb-3">
+      {% if scenario.visibility == 'shared' %}<span class="tag tag-strong"><i class="bi bi-people" aria-hidden="true"></i> Shared</span>{% else %}<span class="tag"><i class="bi bi-lock" aria-hidden="true"></i> Private — only you can see it</span>{% endif %}
+      {% if scenario.is_system %}<span class="tag">Reference scenario (protected)</span>{% endif %}
+      <span class="tag tag-mono">v{{ scenario.version }}</span>
+      {% if scenario.status == 'archived' %}<span class="tag"><i class="bi bi-archive" aria-hidden="true"></i> Archived</span>{% endif %}
+    </div>
+    <h1>{{ scenario.name }}</h1>
+    <p class="lede">{{ scenario.description }}</p>
+  </div>
+  <div class="cg-page-actions">
+    {% if can_simulate %}<a class="btn btn-primary" href="{% url 'simulation:configure' %}?scenario={{ scenario.slug }}"><i class="bi bi-play-fill" aria-hidden="true"></i> Run simulation</a>{% endif %}
+    {% if can_edit or can_clone or can_delete %}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">Manage <i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        {% if can_edit %}<li><a class="dropdown-item" href="{% url 'threats:edit' scenario.slug %}"><i class="bi bi-pencil" aria-hidden="true"></i> Edit</a></li>{% endif %}
+        {% if can_clone %}<li><form method="post" action="{% url 'threats:clone' scenario.slug %}" class="cg-menu-form">{% csrf_token %}<button class="dropdown-item" type="submit"><i class="bi bi-copy" aria-hidden="true"></i> Clone as private</button></form></li>{% endif %}
+        {% if can_edit %}
+        <li><form method="post" action="{% url 'threats:archive' scenario.slug %}" class="cg-menu-form" {% if scenario.is_active %}data-confirm="Archive this scenario? It will be hidden from new simulations but past reports stay available."{% endif %}>{% csrf_token %}
+          <button class="dropdown-item" type="submit"><i class="bi bi-archive" aria-hidden="true"></i> {% if scenario.is_active %}Archive{% else %}Restore{% endif %}</button>
+        </form></li>
+        {% endif %}
+        {% if can_delete %}<li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-danger" href="{% url 'threats:delete' scenario.slug %}"><i class="bi bi-trash" aria-hidden="true"></i> Delete</a></li>{% endif %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<section class="cg-section" aria-label="Scenario parameters">
+  <div class="cg-metrics">
+    <a class="cg-metric" href="{% url 'core:stage_detail' scenario.initial_stage.key %}"><div class="cg-metric-label">Entry point</div><div class="cg-metric-value h4 mb-0 mt-2"><i class="bi bi-{{ scenario.initial_stage.icon }}" aria-hidden="true"></i> {{ scenario.initial_stage.name }}</div></a>
+    <div class="cg-metric"><div class="cg-metric-label">Base likelihood</div><div class="cg-metric-value">{{ scenario.likelihood }}<small>%</small></div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Severity and impact</div><div class="cg-metric-value">{{ scenario.severity }} <small>/</small> {{ scenario.impact }}</div><div class="cg-metric-sub">Each on a 1 to 5 scale</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Propagation threshold</div><div class="cg-metric-value">{{ scenario.propagation_threshold }}<small>%</small></div><div class="cg-metric-sub">An edge spreads at or above this</div></div>
+  </div>
+</section>
+
+<section class="cg-section" aria-labelledby="graph-h">
+  <div class="cg-section-head"><div><h2 id="graph-h">Propagation graph</h2><p>The paths this scenario allows a compromise to take, with each rule's probability before controls.</p></div></div>
+  <div class="cg-pipeline-frame">
+    {% include "components/pipeline.html" with svg_id="scenario-graph" svg_title="Configured propagation rules for this scenario" %}
+    <div class="mt-3">{% include "components/legend.html" with mode="rules" %}</div>
+  </div>
+</section>
+
+<div class="cg-split">
+  <div>
+    <section class="cg-section" aria-labelledby="rules-h">
+      <div class="cg-section-head"><h2 id="rules-h">Propagation rules (possible downstream effects)</h2></div>
+      <div class="cg-panel cg-panel--flush">
+        <div class="table-responsive">
+          <table class="table" aria-label="Propagation rules for this scenario">
+            <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Type</th><th scope="col" class="num">Probability</th><th scope="col">Rationale</th></tr></thead>
+            <tbody>
+              {% for rule in rules %}
+              <tr><td class="text-nowrap">{{ rule.source.name }}</td><td class="text-nowrap">{{ rule.target.name }}</td><td><span class="tag">{{ rule.kind }}</span></td><td class="num">{{ rule.probability }}%</td><td class="small text-muted">{{ rule.rationale }}</td></tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-muted">No propagation rules: the compromise stays at the entry stage.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section class="cg-section" aria-labelledby="assume-h">
+      <div class="cg-section-head"><h2 id="assume-h">Assumptions and impact</h2></div>
+      <dl class="cg-ledger">
+        <dt>Assumptions</dt><dd>{{ scenario.assumptions|default:"—"|linebreaksbr }}</dd>
+        <dt>Potential business impact</dt><dd>{{ scenario.business_impact|default:"—"|linebreaksbr }}</dd>
+        <dt>Affected asset categories</dt><dd><div class="cg-tags">{% for a in scenario.asset_list %}<span class="tag">{{ a }}</span>{% empty %}—{% endfor %}</div></dd>
+        <dt>Preventive measures</dt><dd>{{ scenario.preventive_measures|default:"—"|linebreaksbr }}</dd>
+        <dt>Detective and recovery measures</dt><dd>{{ scenario.detective_measures|default:"—"|linebreaksbr }}</dd>
+      </dl>
+    </section>
+  </div>
+  <aside class="cg-stack" aria-label="Related controls and runs">
+    <section class="cg-panel cg-panel--flush" aria-labelledby="ctl-h">
+      <div class="cg-panel-head"><h2 id="ctl-h">Relevant security controls</h2></div>
+      <ul class="cg-row-list">
+        {% for control in controls %}
+        <li><span><a href="{% url 'threats:control_detail' control.slug %}">{{ control.name }}</a><span class="cg-cell-sub">{{ control.get_category_display }} · protects {% for s in control.stages.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span></span><span class="tag tag-mono">{{ control.effectiveness }}%</span></li>
+        {% empty %}<li class="text-muted">No controls are linked to this scenario.</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="cg-panel cg-panel--flush" aria-labelledby="runs-h">
+      <div class="cg-panel-head"><h2 id="runs-h">Your recent runs</h2></div>
+      <ul class="cg-row-list">
+        {% for run in recent_runs %}
+        <li><a href="{% url 'simulation:detail' run.id %}">{% when run.created_at %}</a>{% if run.residual_risk is not None %}<span class="cg-badge risk-{{ run.classification }}">{{ run.residual_risk }}</span>{% else %}{% include "components/status.html" with status=run.status label=run.get_status_display %}{% endif %}</li>
+        {% empty %}<li class="text-muted">You have not simulated this scenario yet.</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

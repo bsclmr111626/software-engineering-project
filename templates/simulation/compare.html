@@ -1,0 +1,68 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Before and after{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'core:risk' %}">Risk analysis</a></li><li><a href="{% url 'simulation:compare' %}">Compare</a></li><li aria-current="page">Result</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-layout-split" aria-hidden="true"></i> Before and after mitigation</div>
+    <h1>Run comparison</h1>
+    <p class="lede">{% if comparison.same_scenario %}Both runs use <strong>{{ run_a.scenario_name }}</strong>.{% else %}These runs use different scenarios ({{ run_a.scenario_name }} vs {{ run_b.scenario_name }}), so differences are not only due to controls.{% endif %}</p>
+  </div>
+</div>
+
+<section class="cg-section" aria-label="Headline comparison">
+<div class="cg-metrics">
+  <div class="cg-metric"><div class="cg-metric-label">Before · run <code>{{ run_a.short_id }}</code></div><div class="cg-metric-value">{{ run_a.residual_risk }}</div><div class="mt-2"><span class="cg-badge risk-{{ run_a.classification }}">{{ run_a.classification|title }}</span> <a class="small ms-1" href="{% url 'simulation:detail' run_a.id %}">Open</a></div></div>
+  <div class="cg-metric"><div class="cg-metric-label">After · run <code>{{ run_b.short_id }}</code></div><div class="cg-metric-value">{{ run_b.residual_risk }}</div><div class="mt-2"><span class="cg-badge risk-{{ run_b.classification }}">{{ run_b.classification|title }}</span> <a class="small ms-1" href="{% url 'simulation:detail' run_b.id %}">Open</a></div></div>
+  <div class="cg-metric"><div class="cg-metric-label">Change in residual risk</div>
+    <div class="cg-metric-value">{% if comparison.delta < 0 %}<span class="delta-down"><i class="bi bi-arrow-down" aria-hidden="true"></i> {{ comparison.delta }}</span>{% elif comparison.delta > 0 %}<span class="delta-up"><i class="bi bi-arrow-up" aria-hidden="true"></i> +{{ comparison.delta }}</span>{% else %}0.0{% endif %}</div>
+    <div class="cg-metric-sub">Compromised stages: {{ run_a.compromised_count }} → {{ run_b.compromised_count }}</div>
+  </div>
+</div>
+</section>
+
+<div class="cg-split cg-section">
+  <div>
+    <section class="cg-panel" aria-labelledby="chart-h">
+      <div class="cg-panel-head"><h2 id="chart-h">Residual risk by stage</h2></div>
+      <div class="cg-panel-body">
+        <img class="cg-chart" data-chart-palette="{% default_chart_palette %}" src="{% url 'simulation:compare_chart' %}?a={{ run_a.id }}&amp;b={{ run_b.id }}" width="880" height="440" loading="lazy" alt="Grouped bar chart of residual risk per stage before and after: {% for r in comparison.rows %}{{ r.name }} {{ r.risk_a }} to {{ r.risk_b }}{% if not forloop.last %}; {% endif %}{% endfor %}.">
+      </div>
+    </section>
+  </div>
+  <div>
+    <section class="cg-panel" aria-labelledby="ctl-h">
+      <div class="cg-panel-head"><h2 id="ctl-h">Control changes</h2></div>
+      <div class="cg-panel-body">
+        <p class="small mb-1"><strong>Added:</strong> {% for c in comparison.controls_added %}<span class="tag tag-strong me-1">{{ c }}</span>{% empty %}none{% endfor %}</p>
+        <p class="small mb-0"><strong>Removed:</strong> {% for c in comparison.controls_removed %}<span class="tag me-1">{{ c }}</span>{% empty %}none{% endfor %}</p>
+        {% if run_a.likelihood != run_b.likelihood or run_a.severity != run_b.severity or run_a.impact != run_b.impact or run_a.threshold != run_b.threshold %}
+        <p class="small mt-2 mb-0"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Likelihood, severity, impact or threshold also differ between these runs.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+
+<section class="cg-panel cg-panel--flush" aria-labelledby="tbl-h">
+  <div class="cg-panel-head"><h2 id="tbl-h">Stage outcomes</h2></div>
+  <div class="table-responsive">
+  <table class="table" aria-label="Stage states and residual risk before and after">
+    <thead><tr><th scope="col">Stage</th><th scope="col">Before</th><th scope="col">After</th><th scope="col" class="num">Risk before</th><th scope="col" class="num">Risk after</th><th scope="col" class="num">Change</th></tr></thead>
+    <tbody>
+      {% for r in comparison.rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td><span class="cg-badge state-{{ r.state_a }}"><i class="bi {{ r.state_a|state_icon }}" aria-hidden="true"></i>{{ r.state_a|state_label }}</span></td>
+        <td><span class="cg-badge state-{{ r.state_b }}"><i class="bi {{ r.state_b|state_icon }}" aria-hidden="true"></i>{{ r.state_b|state_label }}</span>{% if r.state_changed %} <span class="small text-muted">changed</span>{% endif %}</td>
+        <td class="num">{{ r.risk_a }}</td>
+        <td class="num">{{ r.risk_b }}</td>
+        <td class="num">{% if r.delta < 0 %}<span class="delta-down">{{ r.delta }}</span>{% elif r.delta > 0 %}<span class="delta-up">+{{ r.delta }}</span>{% else %}0.0{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{# Symbols repeat the text labels for sighted users; they are hidden from screen readers. #}
+<ul class="cg-legend list-unstyled mb-0" aria-label="Stage state legend">
+  <li class="cg-badge state-entry"><i class="bi bi-play-circle-fill" aria-hidden="true"></i><span aria-hidden="true">▶</span> Entry point</li>
+  <li class="cg-badge state-compromised"><i class="bi bi-x-octagon-fill" aria-hidden="true"></i><span aria-hidden="true">✖</span> Compromised</li>
+  <li class="cg-badge state-blocked"><i class="bi bi-shield-fill-check" aria-hidden="true"></i><span aria-hidden="true">⊘</span> Blocked by controls</li>
+  <li class="cg-badge state-exposed"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span aria-hidden="true">△</span> Exposed (below threshold)</li>
+  <li class="cg-badge state-unaffected"><i class="bi bi-check-circle" aria-hidden="true"></i><span aria-hidden="true">✓</span> Unaffected</li>
+</ul>
+<ul class="cg-legend list-unstyled mt-2 mb-0" aria-label="Propagation line legend">
+  {% if mode == "rules" %}
+  <li><span class="line line-rule" aria-hidden="true"></span>Configured propagation rule (probability)</li>
+  {% else %}
+  <li><span class="line line-propagated" aria-hidden="true"></span>Propagated (solid line)</li>
+  <li><span class="line line-blocked" aria-hidden="true"></span>Blocked by controls (dashed line, <span aria-hidden="true">✕</span><span class="visually-hidden">cross mark</span>)</li>
+  <li><span class="line line-below" aria-hidden="true"></span>Below threshold (dotted line)</li>
+  <li><span class="line line-not-evaluated" aria-hidden="true"></span>Not evaluated (source not compromised)</li>
+  {% endif %}
+  <li class="text-muted">Arcs above the stages skip stages (bypass); arcs below point backwards (reverse).</li>
+</ul>

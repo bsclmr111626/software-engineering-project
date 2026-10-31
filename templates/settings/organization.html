@@ -1,0 +1,24 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Organization · Settings{% endblock %}
+{% block settings_title %}Organization{% endblock %}
+{% block settings_body %}
+<header><h1>Organization</h1><p>Policies that apply to everyone on this CodeGuard deployment. They are set by environment variables at deploy time (see <code>docs/deployment.md</code>), so they are shown here read-only and cannot be changed from the browser.</p></header>
+<section class="cg-settings-section" aria-labelledby="people-h">
+  <h2 id="people-h">People</h2>
+  <div class="cg-metrics">
+    <div class="cg-metric"><div class="cg-metric-label">Users</div><div class="cg-metric-value">{{ user_total }}</div></div>
+    {% for label, count in role_counts %}<div class="cg-metric"><div class="cg-metric-label">{{ label }}s</div><div class="cg-metric-value">{{ count }}</div></div>{% endfor %}
+  </div>
+  <p class="mt-3"><a class="cg-more-link" href="{% url 'settings:users' %}">Manage users and roles <i class="bi bi-arrow-right" aria-hidden="true"></i></a></p>
+</section>
+<section class="cg-settings-section" aria-labelledby="reg-h">
+  <h2 id="reg-h">Sign-up and access</h2>
+  <dl class="cg-ledger">
+    <dt>Self-registration</dt><dd>{% if registration == 'open' %}Open to anyone{% elif registration == 'domain' %}Limited to {{ registration_domains|join:", " }}{% else %}Closed: administrators create accounts{% endif %} <code class="ms-1">CODEGUARD_REGISTRATION</code></dd>
+    <dt>Role for new accounts</dt><dd>{{ default_role }} <code class="ms-1">CODEGUARD_DEFAULT_ROLE</code></dd>
+    <dt>Sign-in throttling</dt><dd>{{ lockout_failures }} failures per username or {{ lockout_ip_failures }} per IP address, then {{ lockout_minutes }} minutes</dd>
+    <dt>Session lifetime</dt><dd>{{ session_hours }} hours{% if expires_at_close %}, and ends when the browser closes{% endif %}</dd>
+    <dt>Email delivery</dt><dd>{{ email_backend }}</dd>
+  </dl>
+</section>
+{% endblock %}

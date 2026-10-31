@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Supply chain{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Supply chain</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-diagram-3" aria-hidden="true"></i> Model</div>
+    <h1>The modeled supply chain</h1>
+    <p class="lede">Five ordered stages that every change passes through on its way to users. Each stage holds assets an attacker wants, is protected by controls from the catalog, and can be reached through the propagation rules of the scenarios you can see.</p>
+  </div>
+</div>
+
+<section class="cg-section" aria-label="Supply chain summary">
+  <div class="cg-metrics">
+    <div class="cg-metric"><div class="cg-metric-label">Stages</div><div class="cg-metric-value">{{ map.stages|length }}</div><div class="cg-metric-sub">Ordered, weighted by business criticality</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Asset types</div><div class="cg-metric-value">{{ map.asset_count }}</div><div class="cg-metric-sub">Listed across all stages</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Propagation paths</div><div class="cg-metric-value">{{ map.edges|length }}</div><div class="cg-metric-sub">Distinct stage-to-stage edges in {{ map.scenario_count }} active scenario{{ map.scenario_count|pluralize }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Simulations analysed</div><div class="cg-metric-value">{{ map.run_count }}</div><div class="cg-metric-sub">Completed runs visible to you</div></div>
+  </div>
+</section>
+
+<section class="cg-section" aria-labelledby="stages-h">
+  <div class="cg-section-head">
+    <div><h2 id="stages-h">Stages and their assets</h2><p>Open a stage for its controls, the scenarios that enter there and its history across simulations.</p></div>
+  </div>
+  <div class="cg-chain">
+    {% for row in map.stages %}
+    <article class="cg-chain-stage">
+      <span class="cg-chain-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+      <div class="cg-chain-node"><span class="cg-chain-icon"><i class="bi bi-{{ row.stage.icon }}" aria-hidden="true"></i></span><span class="cg-chain-step">Stage {{ row.stage.position }} · weight {{ row.stage.weight }}</span></div>
+      <h3><a href="{% url 'core:stage_detail' row.stage.key %}">{{ row.stage.name }}</a></h3>
+      <div class="cg-chain-assets" aria-label="Assets">{% for asset in row.assets %}<span class="tag">{{ asset }}</span>{% endfor %}</div>
+      <div class="cg-chain-stats">
+        <div><strong>{{ row.controls|length }}</strong>controls</div>
+        <div><strong>{{ row.entry_scenarios }}</strong>entry scenario{{ row.entry_scenarios|pluralize }}</div>
+        <div><strong>{{ row.compromised }}</strong>times compromised</div>
+        <div><strong>{{ row.average_residual|default_if_none:"—" }}</strong>avg residual</div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="cg-section" aria-labelledby="graph-h">
+  <div class="cg-section-head">
+    <div><h2 id="graph-h">Dependency and propagation graph</h2><p>Every stage-to-stage path defined by the active scenarios you can see. Labels show the average probability across the scenarios that use the path; the table below lists how many do. Arcs above skip stages; arcs below point backwards.</p></div>
+    <a class="cg-more-link" href="{% url 'threats:list' %}">Scenarios behind these paths <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+  </div>
+  <div class="cg-pipeline-frame">
+    {% include "components/pipeline.html" with pipeline=map.pipeline svg_id="chain-graph" svg_title="Propagation paths between supply chain stages across active scenarios" %}
+  </div>
+  <details class="cg-data">
+    <summary><i class="bi bi-table" aria-hidden="true"></i> Show the paths as a table</summary>
+    <div class="cg-panel cg-panel--flush">
+      <div class="table-responsive">
+        <table class="table" aria-label="Propagation paths across active scenarios">
+          <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Type</th><th scope="col" class="num">Scenarios</th><th scope="col" class="num">Average probability</th></tr></thead>
+          <tbody>
+            {% for e in map.edges %}
+            <tr><td>{{ e.source_name }}</td><td>{{ e.target_name }}</td><td><span class="tag">{{ e.kind }}</span></td><td class="num">{{ e.scenarios }}</td><td class="num">{{ e.average }}%</td></tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted">No active scenario defines a propagation path yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="cg-section cg-split--even cg-split" aria-label="Related areas">
+  <div class="cg-note"><i class="bi bi-shield-check" aria-hidden="true"></i><div><p><strong>{{ map.control_count }} security controls</strong> protect these stages. Preventive controls lower the probability of reaching a stage; detective and recovery controls reduce the residual risk once it is reached.</p><p><a href="{% url 'threats:controls' %}">Open the control library</a></p></div></div>
+  <div class="cg-note"><i class="bi bi-info-circle" aria-hidden="true"></i><div><p>Stages, their weights and assets are reference data loaded with CodeGuard. Administrators can change them in the Django administration site; existing reports keep the values they were run with.</p></div></div>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{# One propagation-rule row. Django sets aria-describedby="<id>_helptext <id>_error"; those ids are rendered below. #}
+<fieldset class="rule-row">
+  <legend class="visually-hidden">{% if number %}Propagation rule {{ number }}{% else %}New propagation rule{% endif %}</legend>
+  {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+  {% if f.non_field_errors %}<div class="invalid-feedback d-block mb-2" role="alert">{{ f.non_field_errors|join:" " }}</div>{% endif %}
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3">{% include "threats/_rule_field.html" with field=f.source label="From" %}</div>
+    <div class="col-6 col-md-3">{% include "threats/_rule_field.html" with field=f.target label="To" %}</div>
+    <div class="col-4 col-md-2">{% include "threats/_rule_field.html" with field=f.probability label="Probability (%)" %}</div>
+    <div class="col-8 col-md-4">{% include "threats/_rule_field.html" with field=f.rationale label="Rationale" %}</div>
+    {% if f.DELETE %}<div class="col-12"><div class="form-check">{{ f.DELETE }}<label class="form-check-label small" for="{{ f.DELETE.id_for_label }}">Remove this rule</label></div></div>{% endif %}
+  </div>
+</fieldset>

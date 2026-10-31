@@ -1,0 +1,80 @@
+{# Landing hero: a map of the five supply chain stages with a hypothetical compromise path that a control stops. Decorative; the copy beside it says the same in words. #}
+<svg class="illo" viewBox="0 0 640 470" role="img" aria-labelledby="hero-art-title hero-art-desc">
+  <title id="hero-art-title">Illustration of a propagation path through the software supply chain</title>
+  <desc id="hero-art-desc">Five stages, from the developer workstation to production. A compromise moves from the workstation through version control into the build pipeline, and a security control blocks it before it reaches the registry and production.</desc>
+  <rect class="i-paper" x="6" y="6" width="628" height="458" rx="18"/>
+  <!-- rails: every possible downstream hop -->
+  <path class="i-dash" d="M120 360 C 170 360, 170 250, 214 250"/>
+  <path class="i-dash" d="M306 250 C 336 250, 330 312, 356 312"/>
+  <path class="i-dash" d="M448 312 C 478 312, 470 196, 500 196"/>
+  <path class="i-dash" d="M548 222 L 548 300"/>
+  <path class="i-dash" d="M120 380 C 260 440, 420 430, 500 360"/>
+
+  <!-- dependency cluster around the registry -->
+  <g>
+    <path class="i-line" d="M548 170 L 590 128 M548 170 L 600 172 M548 170 L 520 120 M590 128 L 612 96 M520 120 L 540 84"/>
+    <circle class="i-node" cx="590" cy="128" r="6"/>
+    <circle class="i-node" cx="600" cy="172" r="5"/>
+    <circle class="i-node" cx="520" cy="120" r="5"/>
+    <circle class="i-node" cx="612" cy="96" r="4"/>
+    <circle class="i-node" cx="540" cy="84" r="4"/>
+    <text class="i-label" x="500" y="74">dependencies</text>
+  </g>
+
+  <!-- propagation path (hypothetical) -->
+  <path class="i-path-crit" d="M120 350 C 170 350, 168 240, 214 240"/>
+  <path class="i-path-crit" d="M306 240 C 340 240, 326 302, 356 302"/>
+  <path class="i-path-crit i-travel" d="M120 350 C 170 350, 168 240, 214 240"/>
+  <path class="i-path-crit i-travel" d="M306 240 C 340 240, 326 302, 356 302"/>
+  <path class="i-block" d="M448 300 C 470 300, 466 250, 480 232"/>
+
+  <!-- control that stops it -->
+  <g transform="translate(474 252)">
+    <circle class="i-low-soft" r="17"/>
+    <path class="i-line-strong" d="M-6 0 l4 4 l8 -9"/>
+  </g>
+  <text class="i-label" x="440" y="290" text-anchor="end">blocked by control</text>
+
+  <!-- stage nodes -->
+  <g>
+    <rect class="i-crit-soft" x="28" y="330" width="92" height="52" rx="10"/>
+    <text class="i-label" x="40" y="322">01</text>
+    <text class="i-text" x="40" y="361">Workstation</text>
+  </g>
+  <g>
+    <rect class="i-crit-soft" x="214" y="222" width="92" height="52" rx="10"/>
+    <text class="i-label" x="226" y="214">02</text>
+    <text class="i-text" x="226" y="253">Repository</text>
+  </g>
+  <g>
+    <rect class="i-crit-soft" x="356" y="286" width="92" height="52" rx="10"/>
+    <text class="i-label" x="368" y="278">03</text>
+    <text class="i-text" x="368" y="317">CI/CD</text>
+  </g>
+  <g>
+    <rect class="i-paper" x="500" y="170" width="96" height="52" rx="10"/>
+    <text class="i-label" x="512" y="162">04</text>
+    <text class="i-text" x="512" y="201">Registry</text>
+  </g>
+  <g>
+    <rect class="i-paper" x="500" y="300" width="96" height="52" rx="10"/>
+    <text class="i-label" x="512" y="372">05</text>
+    <text class="i-text" x="512" y="331">Production</text>
+  </g>
+
+  <!-- entry marker -->
+  <g transform="translate(74 300)">
+    <circle class="i-crit i-pulse" r="7"/>
+    <circle class="i-crit" r="4"/>
+  </g>
+  <text class="i-label" x="88" y="304">entry point</text>
+
+  <!-- legend card -->
+  <g transform="translate(30 36)">
+    <rect class="i-sunken" width="214" height="104" rx="12"/>
+    <text class="i-label" x="16" y="26">simulation · hypothetical</text>
+    <path class="i-path-crit" d="M16 50 h28"/><text class="i-text" x="54" y="54">Compromise spreads</text>
+    <path class="i-block" d="M16 74 h28"/><text class="i-text" x="54" y="78">Control holds the line</text>
+    <path class="i-dash" d="M16 94 h28"/><text class="i-label" x="54" y="98">possible path, not taken</text>
+  </g>
+</svg>

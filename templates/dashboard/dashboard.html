@@ -1,0 +1,153 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Overview{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Overview</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-compass" aria-hidden="true"></i> Overview</div>
+    <h1>Supply chain risk, at a glance</h1>
+    <p class="lede">Calculated live from the completed simulations visible to you: your own runs plus reports colleagues have shared.</p>
+  </div>
+  {% if user_can_simulate %}
+  <div class="cg-page-actions"><a class="btn btn-primary" href="{% url 'simulation:configure' %}"><i class="bi bi-play-fill" aria-hidden="true"></i> New simulation</a></div>
+  {% endif %}
+</div>
+
+<section class="cg-section" aria-label="Key figures">
+  <div class="cg-metrics">
+    <a class="cg-metric" href="{% url 'threats:list' %}">
+      <div class="cg-metric-label"><i class="bi bi-bug" aria-hidden="true"></i>Active scenarios</div>
+      <div class="cg-metric-value">{{ metrics.scenario_count }}</div>
+      <div class="cg-metric-sub">Shared plus your private ones</div>
+    </a>
+    <a class="cg-metric" href="{% url 'reports:list' %}?scope=all">
+      <div class="cg-metric-label"><i class="bi bi-journal-richtext" aria-hidden="true"></i>Completed simulations</div>
+      <div class="cg-metric-value">{{ metrics.run_total }}</div>
+      <div class="cg-metric-sub">{{ metrics.run_mine }} of them yours</div>
+    </a>
+    <a class="cg-metric" href="{% url 'simulation:results' %}">
+      <div class="cg-metric-label"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>High or critical results</div>
+      <div class="cg-metric-value">{{ metrics.high_risk }}</div>
+      <div class="cg-metric-sub">Overall residual risk of 30 or more</div>
+    </a>
+    <a class="cg-metric" href="{% url 'remediation:plan' %}">
+      <div class="cg-metric-label"><i class="bi bi-list-check" aria-hidden="true"></i>Open remediation</div>
+      <div class="cg-metric-value">{{ metrics.remediation_open }}</div>
+      <div class="cg-metric-sub">{% if metrics.remediation_overdue %}{{ metrics.remediation_overdue }} overdue{% else %}None overdue{% endif %}</div>
+    </a>
+  </div>
+</section>
+
+{% if metrics.run_total %}
+<section class="cg-section cg-split" aria-label="Risk posture">
+  <div class="cg-panel">
+    <div class="cg-panel-head"><div><h2 id="posture-h">Average residual risk</h2><p>Mean of each run's overall residual risk, on a 0 to 100 scale</p></div></div>
+    <div class="cg-panel-body">
+      <div class="d-flex flex-wrap align-items-end gap-4 mb-4">
+        <div class="cg-hero-figure">{{ metrics.average_residual }}</div>
+        <div class="pb-2">
+          <span class="cg-badge cg-badge--lg risk-{{ metrics.average_residual|risk_class }}"><i class="bi {{ metrics.average_residual|risk_class|risk_icon }}" aria-hidden="true"></i>{{ metrics.average_residual|risk_class|title }}</span>
+          <div class="small text-muted mt-2">Inherent average {{ metrics.average_inherent }}, before controls</div>
+        </div>
+      </div>
+      <h3 class="small text-muted fw-normal mb-2" id="dist-heading">Runs by residual risk class</h3>
+      {% with chart=metrics.band_chart %}
+      <svg class="cg-chart-svg" viewBox="-84 0 {{ chart.width|add:84 }} {{ chart.height }}" role="img" aria-labelledby="dist-heading" aria-describedby="dist-desc">
+        <desc id="dist-desc">{% for row in chart.rows %}{{ row.label }}: {{ row.value }} run{{ row.value|pluralize }}. {% endfor %}</desc>
+        <line class="baseline" x1="0" x2="0" y1="0" y2="{{ chart.height }}"/>
+        {% for row in chart.rows %}
+        <text class="cat" x="-10" y="{{ row.text_y }}" text-anchor="end">{{ row.label }}</text>
+        <rect class="hit hit-bar" x="-84" y="{{ row.hit_y }}" width="{{ chart.width|add:84 }}" height="{{ chart.row_height }}" tabindex="0" data-tip="{{ row.tip }}"><title>{{ row.tip }}</title></rect>
+        {% if row.w %}<rect class="mark {{ row.cls }}" x="{{ row.x }}" y="{{ row.y }}" width="{{ row.w }}" height="{{ row.h }}" rx="3"/>{% endif %}
+        <text class="value" x="{{ row.text_x }}" y="{{ row.text_y }}">{{ row.value }}</text>
+        {% endfor %}
+      </svg>
+      {% endwith %}
+    </div>
+  </div>
+
+  <div class="cg-panel">
+    <div class="cg-panel-head"><h2>Next actions</h2></div>
+    <ul class="cg-row-list">
+      {% for item in metrics.next_items %}
+      <li>
+        <span><a href="{% url 'remediation:detail' item.pk %}">{{ item.control.name }}</a><span class="cg-cell-sub">{{ item.scenario_name }} · {% if item.due_date %}due {{ item.due_date|date:"j M" }}{% else %}no due date{% endif %}</span></span>
+        {% include "components/status.html" with status=item.status label=item.get_status_display %}
+      </li>
+      {% endfor %}
+      {% for rec in metrics.recommended_controls|slice:":3" %}
+      <li>
+        <span><a href="{% url 'threats:control_detail' rec.control %}">{{ rec.name }}</a><span class="cg-cell-sub">Recommended in {{ rec.count }} of your runs · {{ rec.effort }} effort</span></span>
+        <span class="cg-badge risk-low" title="Average modeled reduction"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ rec.average_reduction }}</span>
+      </li>
+      {% endfor %}
+      {% if not metrics.next_items and not metrics.recommended_controls %}
+      <li class="text-muted">Nothing is waiting on you. Recommendations appear after you run simulations.</li>
+      {% endif %}
+    </ul>
+    <div class="cg-panel-foot d-flex justify-content-between flex-wrap gap-2"><a class="cg-more-link" href="{% url 'remediation:plan' %}">Remediation plan <i class="bi bi-arrow-right" aria-hidden="true"></i></a><a class="cg-more-link" href="{% url 'core:risk' %}">Risk analysis <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+  </div>
+</section>
+
+<section class="cg-section" aria-labelledby="strip-h">
+  <div class="cg-section-head">
+    <div><h2 id="strip-h">Where compromises land</h2><p>How often each stage was the entry point or was compromised, across {{ metrics.run_total }} completed run{{ metrics.run_total|pluralize }}.</p></div>
+    <a class="cg-more-link" href="{% url 'core:supply_chain' %}">Explore the supply chain <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+  </div>
+  <div class="cg-chain">
+    {% for cell in metrics.stage_strip %}
+    <div class="cg-chain-stage">
+      <span class="cg-chain-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+      <div class="cg-chain-node"><span class="cg-chain-icon"><i class="bi bi-{{ cell.stage.icon }}" aria-hidden="true"></i></span><span class="cg-chain-step">Stage {{ cell.stage.position }}</span></div>
+      <h3><a href="{% url 'core:stage_detail' cell.stage.key %}">{{ cell.stage.name }}</a></h3>
+      <progress class="cg-meter meter-{% if cell.share >= 50 %}critical{% elif cell.share >= 30 %}high{% elif cell.share >= 15 %}moderate{% else %}low{% endif %}" max="100" value="{{ cell.share }}" aria-label="Compromised in {{ cell.share }} percent of runs">{{ cell.share }}%</progress>
+      <div class="cg-chain-stats">
+        <div><strong>{{ cell.compromised }}</strong>compromised</div>
+        <div><strong>{{ cell.average_risk|default_if_none:"—" }}</strong>avg risk</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="cg-section" aria-labelledby="recent-heading">
+  <div class="cg-panel cg-panel--flush">
+    <div class="cg-panel-head"><h2 id="recent-heading">Recent simulation activity</h2><a class="cg-more-link" href="{% url 'reports:list' %}">All reports <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+    <div class="table-responsive">
+      <table class="table table-hover" aria-label="Most recent simulation runs">
+        <thead><tr><th scope="col">Scenario</th><th scope="col">When</th><th scope="col">Status</th><th scope="col" class="num">Residual</th></tr></thead>
+        <tbody>
+          {% for run in metrics.recent_runs %}
+          <tr>
+            <td><a href="{% url 'simulation:detail' run.id %}">{{ run.scenario_name }}</a>{% if run.user != user %} <span class="tag">shared by {{ run.user.get_username }}</span>{% endif %}</td>
+            <td class="text-muted small">{% when run.created_at %}</td>
+            <td>{% include "components/status.html" with status=run.status label=run.get_status_display %}</td>
+            <td class="num">{% if run.residual_risk is not None %}<span class="cg-badge risk-{{ run.classification }}">{{ run.residual_risk }}</span>{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% else %}
+<section class="cg-panel cg-section">
+  <div class="cg-empty">
+    {% include "illustrations/empty.html" with kind="graph" %}
+    <h2>No simulation history yet</h2>
+    {% if user_can_simulate %}
+    <p>Run your first simulation to populate risk figures, stage exposure and recommendations. A good first run: any reference scenario with no controls, to see the inherent picture.</p>
+    <a class="btn btn-primary" href="{% url 'simulation:configure' %}">Run a simulation</a>
+    {% else %}
+    <p>As a viewer you can see reports that analysts share. None have been shared yet.</p>
+    <a class="btn btn-outline-secondary" href="{% url 'threats:list' %}">Browse the threat library</a>
+    {% endif %}
+  </div>
+</section>
+<section class="cg-section cg-split--even cg-split" aria-label="Where to start">
+  <a class="cg-panel cg-panel-body d-block text-decoration-none" href="{% url 'core:supply_chain' %}"><span class="cg-icon-tile mb-3"><i class="bi bi-diagram-3" aria-hidden="true"></i></span><h2 class="h5 text-body">Explore the supply chain</h2><p class="text-muted mb-0">See the five modeled stages, their assets and the controls that protect them.</p></a>
+  <a class="cg-panel cg-panel-body d-block text-decoration-none" href="{% url 'threats:list' %}"><span class="cg-icon-tile mb-3"><i class="bi bi-bug" aria-hidden="true"></i></span><h2 class="h5 text-body">Browse the threat library</h2><p class="text-muted mb-0">Read each scenario's entry point, propagation rules and assumptions.</p></a>
+</section>
+{% endif %}
+{% endblock %}

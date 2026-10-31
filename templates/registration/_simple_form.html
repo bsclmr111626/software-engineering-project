@@ -1,0 +1,21 @@
+{% extends "layouts/auth.html" %}
+{% block content %}
+<h1>{% block heading %}{% endblock %}</h1>
+<p>{% block intro %}{% endblock %}</p>
+{% if form %}
+{% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  {% for field in form %}
+  <div class="cg-field">
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <input class="form-control" type="{{ field.field.widget.input_type }}" name="{{ field.html_name }}" id="{{ field.id_for_label }}"{% if field.field.widget.attrs.autocomplete %} autocomplete="{{ field.field.widget.attrs.autocomplete }}"{% endif %}{% if field.field.required %} required{% endif %}{% if field.widget_type != 'password' and field.value %} value="{{ field.value }}"{% endif %}{% if field.errors %} aria-invalid="true"{% endif %}{% if field.help_text or field.errors %} aria-describedby="{% if field.help_text %}{{ field.auto_id }}_helptext{% endif %}{% if field.help_text and field.errors %} {% endif %}{% if field.errors %}{{ field.auto_id }}_error{% endif %}"{% endif %}>
+    {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</div>{% endif %}
+    {% if field.errors %}<div class="invalid-feedback d-block" id="{{ field.auto_id }}_error">{% for e in field.errors %}{{ e }}<br>{% endfor %}</div>{% endif %}
+  </div>
+  {% endfor %}
+  <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">{% block submit %}Submit{% endblock %}</span><span class="btn-loading">Working…</span></button>
+</form>
+{% endif %}
+{% block after %}{% endblock %}
+{% endblock %}

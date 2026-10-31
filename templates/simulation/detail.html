@@ -1,0 +1,251 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}{{ sections|get_item:section }} · {{ run.scenario_name }}{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'simulation:results' %}">Results</a></li><li aria-current="page">{{ run.scenario_name }}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-tags mb-3">
+      {% include "components/status.html" with status=run.status label=run.get_status_display %}
+      <span class="tag tag-mono">Scenario v{{ run.scenario_version }}</span>
+      {% if run.is_shared %}<span class="tag tag-strong"><i class="bi bi-people" aria-hidden="true"></i> Shared</span>{% endif %}
+      {% if not is_owner %}<span class="tag">Owner: {{ run.user.get_username }}</span>{% endif %}
+    </div>
+    <h1>{{ run.scenario_name }}</h1>
+    <div class="cg-meta-line">
+      <span><i class="bi bi-hash" aria-hidden="true"></i><code>{{ run.short_id }}</code></span>
+      <span><i class="bi bi-clock" aria-hidden="true"></i>{{ run.created_at|date:"Y-m-d H:i" }} UTC</span>
+      <span><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>Entry: {{ run.entry_stage_name }}</span>
+      {% if result.model_version %}<span><i class="bi bi-cpu" aria-hidden="true"></i>Model {{ result.model_version }}</span>{% endif %}
+    </div>
+  </div>
+  {% if run.status == 'completed' %}
+  <div class="cg-page-actions">
+    {% if user_can_simulate %}<a class="btn btn-primary" href="{% url 'simulation:configure' %}?rerun={{ run.id }}"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Rerun with changes</a>{% endif %}
+    {% if previous %}<a class="btn btn-outline-secondary" href="{% url 'simulation:compare' %}?a={{ previous.id }}&amp;b={{ run.id }}"><i class="bi bi-layout-split" aria-hidden="true"></i> Compare with previous run</a>{% endif %}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i><span class="visually-hidden">More report actions</span></button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{% url 'reports:document' run.id %}"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Open as report document</a></li>
+        <li><a class="dropdown-item" href="{% url 'simulation:export_run' run.id %}"><i class="bi bi-filetype-csv" aria-hidden="true"></i> Export CSV</a></li>
+        {% if is_owner %}
+        <li><hr class="dropdown-divider"></li>
+        <li><form method="post" action="{% url 'simulation:share' run.id %}" class="cg-menu-form">{% csrf_token %}
+          <button class="dropdown-item" type="submit"><i class="bi {% if run.is_shared %}bi-lock{% else %}bi-share{% endif %}" aria-hidden="true"></i> {% if run.is_shared %}Make private{% else %}Share report{% endif %}</button>
+        </form></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if scenario_changed %}
+<div class="alert alert-info d-flex gap-2" role="note"><i class="bi bi-clock-history" aria-hidden="true"></i><div>The scenario has been edited since this run (now version {{ run.scenario.version }}). This report shows the stored version {{ run.scenario_version }} snapshot and does not change.</div></div>
+{% elif not run.scenario %}
+<div class="alert alert-info d-flex gap-2" role="note"><i class="bi bi-archive" aria-hidden="true"></i><div>The original scenario has been deleted. This report is preserved from its stored snapshot.</div></div>
+{% endif %}
+
+{% if run.status != 'completed' %}
+<div class="cg-panel"><div class="cg-empty">
+  {% include "illustrations/empty.html" with kind="search" %}
+  <h2>This simulation did not complete</h2>
+  <p>{{ run.error_message|default:"The run is still pending." }} No partial results were saved.</p>
+  {% if user_can_simulate %}<a class="btn btn-primary" href="{% url 'simulation:configure' %}?rerun={{ run.id }}">Try again</a>{% endif %}
+</div></div>
+{% else %}
+
+<nav class="cg-tabs" aria-label="Result sections">
+  {% for key, label in sections.items %}
+  <a href="{% if key == 'summary' %}{% url 'simulation:detail' run.id %}{% else %}{% url 'simulation:detail_section' run.id key %}{% endif %}"{% if key == section %} aria-current="page"{% endif %}>{{ label }}{% if key == 'paths' %} <span class="cg-tab-count">{{ events|length }}</span>{% elif key == 'controls' %} <span class="cg-tab-count">{{ result.recommendations|length }}</span>{% endif %}</a>
+  {% endfor %}
+</nav>
+
+{% if section == "summary" %}
+<section class="cg-verdict" aria-label="Headline result">
+  <div class="cg-verdict-main">
+    <div class="cg-verdict-scale">
+      <div>
+        <div class="cg-metric-label">Inherent risk, no controls</div>
+        <div class="cg-hero-figure text-muted">{{ run.inherent_risk }}</div>
+        <span class="cg-badge risk-{{ result.inherent_classification }} mt-2"><i class="bi {{ result.inherent_classification|risk_icon }}" aria-hidden="true"></i>{{ result.inherent_classification|title }}</span>
+      </div>
+      <div class="cg-verdict-arrow" aria-hidden="true"><i class="bi bi-arrow-right"></i></div>
+      <div>
+        <div class="cg-metric-label">Residual risk, with controls</div>
+        <div class="cg-hero-figure">{{ run.residual_risk }}</div>
+        <span class="cg-badge risk-{{ run.classification }} mt-2"><i class="bi {{ run.classification|risk_icon }}" aria-hidden="true"></i>{{ run.classification|title }}</span>
+      </div>
+    </div>
+    <dl class="cg-review mt-2">
+      <div><dt>Modeled reduction</dt><dd>{% if run.risk_reduction > 0 %}<span class="delta-down">−{{ run.risk_reduction }}</span>{% else %}0.0{% endif %}</dd></div>
+      <div><dt>Compromised stages</dt><dd>{{ run.compromised_count }} <small class="text-muted fw-normal">of {{ stage_results|length }}, {{ result.inherent_compromised_count }} without controls</small></dd></div>
+      <div><dt>Attempts stopped</dt><dd>{{ result.blocked_count|add:result.contained_count }} <small class="text-muted fw-normal">{{ result.blocked_count }} blocked, {{ result.contained_count }} below threshold</small></dd></div>
+    </dl>
+  </div>
+  <div class="cg-panel">
+    <div class="cg-panel-head"><h2 id="why-h">What happened, in plain language</h2></div>
+    <div class="cg-panel-body"><ol class="cg-explain" aria-labelledby="why-h">{% for line in result.explanation %}<li>{{ line }}</li>{% endfor %}</ol></div>
+  </div>
+</section>
+
+<section class="cg-section" aria-labelledby="pipe-h">
+  <div class="cg-section-head"><div><h2 id="pipe-h">Supply chain propagation</h2><p>Threshold {{ run.threshold }}% · peak stage risk {{ result.peak_residual_risk }}</p></div><a class="cg-more-link" href="{% url 'simulation:detail_section' run.id 'paths' %}">Every path evaluated <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+  <div class="cg-pipeline-frame">
+    {% include "components/pipeline.html" with svg_id="run-graph" svg_title="Simulated propagation through the five supply chain stages" %}
+    <div class="mt-3">{% include "components/legend.html" %}</div>
+  </div>
+</section>
+
+<div class="cg-split">
+  <section class="cg-section" aria-labelledby="rec-h">
+    <div class="cg-section-head"><div><h2 id="rec-h">Recommended controls</h2><p>Ranked by modeled reduction in overall residual risk.</p></div>{% if result.recommendations|length > 3 %}<a class="cg-more-link" href="{% url 'simulation:detail_section' run.id 'controls' %}">All {{ result.recommendations|length }} <i class="bi bi-arrow-right" aria-hidden="true"></i></a>{% endif %}</div>
+    <div class="cg-panel cg-panel-body">
+      {% for rec in result.recommendations|slice:":3" %}
+      {% include "simulation/_recommendation.html" with rank=forloop.counter %}
+      {% empty %}
+      <p class="text-muted mb-0">No catalog control would further reduce the modeled risk for this configuration.</p>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="cg-section" aria-labelledby="assets-h">
+    <div class="cg-section-head"><div><h2 id="assets-h">Affected assets</h2><p>Assets held at the stages this run compromised.</p></div></div>
+    <div class="cg-panel cg-panel--flush">
+      <ul class="cg-row-list">
+        {% for row in affected_assets %}
+        <li class="d-block">
+          <div class="d-flex justify-content-between align-items-center mb-2"><strong>{{ row.stage.stage_name }}</strong><span class="cg-badge state-{{ row.stage.state }}"><i class="bi {{ row.stage.state|state_icon }}" aria-hidden="true"></i>{{ row.stage.state|state_label }}</span></div>
+          <div class="cg-tags">{% for a in row.assets %}<span class="tag">{{ a }}</span>{% empty %}<span class="small text-muted">No assets recorded.</span>{% endfor %}</div>
+        </li>
+        {% empty %}
+        <li class="text-muted">No stage was compromised.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+</div>
+
+{% elif section == "stages" %}
+<section class="cg-section" aria-labelledby="stages-h">
+  <div class="cg-section-head"><div><h2 id="stages-h">Risk at each stage</h2><p>Residual risk after controls, with the inherent value and the coverage that explains the difference.</p></div></div>
+  <div class="cg-stage-cards">
+    {% for s in stage_results %}
+    <article class="cg-stage state-border-{{ s.state }}" aria-label="{{ s.stage_name }}: {{ s.state|state_label }}">
+      <div class="small text-muted">Stage {{ s.position }}</div>
+      <h3 class="h6 mb-2">{{ s.stage_name }}</h3>
+      <span class="cg-badge state-{{ s.state }}"><i class="bi {{ s.state|state_icon }}" aria-hidden="true"></i>{{ s.state|state_label }}</span>
+      {% if s.inherent_state != s.state %}<div class="small text-muted mt-1">Without controls: {{ s.inherent_state|state_label }}</div>{% endif %}
+      <div class="d-flex justify-content-between align-items-baseline mt-3"><span class="small text-muted">Residual risk</span><strong class="fs-5">{{ s.residual_risk }}</strong></div>
+      <progress class="cg-meter meter-{{ s.classification }}" max="100" value="{{ s.residual_risk }}" aria-label="Residual risk {{ s.residual_risk }} of 100">{{ s.residual_risk }}</progress>
+      <dl class="cg-ledger cg-ledger--compact small mt-2 mb-3">
+        <dt>Inherent risk</dt><dd class="text-end">{{ s.inherent_risk }}</dd>
+        <dt>Likelihood</dt><dd class="text-end">{{ s.residual_likelihood }}%</dd>
+        <dt>Preventive cover</dt><dd class="text-end">{{ s.preventive_coverage }}%</dd>
+        <dt>Mitigating cover</dt><dd class="text-end">{{ s.mitigating_coverage }}%</dd>
+      </dl>
+      <p class="small text-muted mb-0">{{ s.explanation }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+<section class="cg-section cg-panel" aria-labelledby="stage-chart-h">
+  <div class="cg-panel-head"><h2 id="stage-chart-h">Inherent and residual risk by stage</h2></div>
+  <div class="cg-panel-body">
+    <img class="cg-chart" data-chart-palette="{% default_chart_palette %}" src="{% url 'simulation:chart' run.id 'stages' %}" width="880" height="440" loading="lazy" alt="Grouped bar chart of inherent and residual risk for each stage: {% for s in stage_results %}{{ s.stage_name }} {{ s.inherent_risk }} to {{ s.residual_risk }}{% if not forloop.last %}; {% endif %}{% endfor %}.">
+    <p class="small text-muted mt-2 mb-0">The stage cards above list the same values.</p>
+  </div>
+</section>
+
+{% elif section == "paths" %}
+<section class="cg-section cg-panel cg-panel--flush" aria-labelledby="events-h">
+  <div class="cg-panel-head"><div><h2 id="events-h">Propagation paths evaluated</h2><p>Every edge the engine evaluated, in order, breadth-first from the entry stage.</p></div></div>
+  <div class="table-responsive">
+    <table class="table" aria-label="Every propagation edge evaluated, in order, with its probabilities and outcome">
+      <thead><tr><th scope="col">#</th><th scope="col">Path</th><th scope="col">Type</th><th scope="col" class="num">Base</th><th scope="col" class="num">Coverage</th><th scope="col" class="num">Effective</th><th scope="col">Outcome</th><th scope="col">Reasoning</th></tr></thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td class="mono">{{ e.order }}</td>
+          <td class="text-nowrap">{{ e.source_name }} → {{ e.target_name }}</td>
+          <td><span class="tag">{{ e.kind }}</span></td>
+          <td class="num">{{ e.base_probability }}%</td>
+          <td class="num">{{ e.control_coverage }}%</td>
+          <td class="num"><strong>{{ e.effective_probability }}%</strong></td>
+          <td><span class="cg-badge {{ e.outcome|outcome_class }}"><i class="bi {{ e.outcome|outcome_icon }}" aria-hidden="true"></i>{{ e.outcome|outcome_label }}</span></td>
+          <td class="small text-muted">{{ e.explanation }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-muted">The scenario has no propagation rules from the entry stage.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="cg-section cg-panel" aria-labelledby="outcome-h">
+  <div class="cg-panel-head"><h2 id="outcome-h">Outcomes of the evaluated paths</h2></div>
+  <div class="cg-panel-body">
+    <img class="cg-chart" data-chart-palette="{% default_chart_palette %}" src="{% url 'simulation:chart' run.id 'outcomes' %}" width="880" height="300" loading="lazy" alt="Bar chart of the {{ events|length }} evaluated propagation edges by outcome: {{ outcome_counts.propagated }} propagated, {{ outcome_counts.blocked_by_controls }} blocked by controls, {{ outcome_counts.below_threshold }} below threshold.">
+  </div>
+</section>
+
+{% elif section == "controls" %}
+<div class="cg-split">
+  <section class="cg-section" aria-labelledby="rec-h">
+    <div class="cg-section-head"><div><h2 id="rec-h">Recommended controls</h2><p>Each recommendation re-runs this exact configuration with one more control and reports the change.</p></div></div>
+    <div class="cg-panel cg-panel-body">
+      {% for rec in result.recommendations %}
+      {% include "simulation/_recommendation.html" with rank=forloop.counter detailed=True %}
+      {% empty %}
+      <p class="text-muted mb-0">No catalog control would further reduce the modeled risk for this configuration.</p>
+      {% endfor %}
+    </div>
+  </section>
+  <aside class="cg-stack">
+    <section class="cg-panel cg-panel--flush" aria-labelledby="eff-h">
+      <div class="cg-panel-head"><div><h2 id="eff-h">Control effectiveness</h2><p>Overall residual risk with each enabled control removed.</p></div></div>
+      {% if result.control_contributions %}
+      <table class="table table-sm" aria-label="Overall residual risk without each enabled control, and that control's contribution">
+        <thead><tr><th scope="col">Control</th><th scope="col" class="num">Without</th><th scope="col" class="num">Contribution</th></tr></thead>
+        <tbody>
+          {% for c in result.control_contributions %}
+          <tr><td class="small">{{ c.name }}<span class="cg-cell-sub">{{ c.protected_stages|join:", " }}</span></td><td class="num">{{ c.risk_without }}</td><td class="num">{% if c.contribution > 0 %}<span class="delta-down">−{{ c.contribution }}</span>{% else %}0.0{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="cg-panel-body text-muted">No controls were enabled for this run, so residual risk equals inherent risk. Use <em>Rerun with changes</em> to add controls.</div>
+      {% endif %}
+    </section>
+    <section class="cg-panel" aria-labelledby="overall-h">
+      <div class="cg-panel-head"><h2 id="overall-h">Overall risk</h2></div>
+      <div class="cg-panel-body">
+        <img class="cg-chart" data-chart-palette="{% default_chart_palette %}" src="{% url 'simulation:chart' run.id 'overall' %}" width="880" height="290" loading="lazy" alt="Horizontal bar chart of overall risk on a 0 to 100 scale: inherent risk without controls {{ run.inherent_risk }} ({{ result.inherent_classification }}), residual risk with controls {{ run.residual_risk }} ({{ run.classification }}). Dashed guides mark the class boundaries at 15, 30 and 50.">
+      </div>
+    </section>
+  </aside>
+</div>
+
+{% elif section == "method" %}
+<div class="cg-split">
+  <section class="cg-section" aria-labelledby="inputs-h">
+    <div class="cg-section-head"><h2 id="inputs-h">Inputs used</h2></div>
+    <dl class="cg-ledger">
+      <dt>Base likelihood</dt><dd>{{ run.likelihood }}%</dd>
+      <dt>Severity / impact</dt><dd>{{ run.severity }} / {{ run.impact }}</dd>
+      <dt>Threshold</dt><dd>{{ run.threshold }}%</dd>
+      <dt>Entry stage</dt><dd>{{ run.entry_stage_name }}</dd>
+      <dt>Enabled controls</dt><dd>{% for c in enabled_controls %}<span class="tag me-1 mb-1">{{ c.name }}</span>{% empty %}None{% endfor %}</dd>
+      <dt>Scenario version</dt><dd>{{ run.scenario_version }}</dd>
+      <dt>Model version</dt><dd>{{ result.model_version }}</dd>
+      <dt>Run identifier</dt><dd><code>{{ run.id }}</code></dd>
+    </dl>
+  </section>
+  <section class="cg-section" aria-labelledby="lim-h">
+    <div class="cg-section-head"><h2 id="lim-h">Model limitations and assumptions</h2></div>
+    <ul class="small">{% for item in limitations %}<li class="mb-2">{{ item }}</li>{% endfor %}</ul>
+    <div class="cg-disclaimer"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Modeled improvements do not guarantee equivalent protection in a real organization. See the <a href="{% url 'core:help' %}">methodology</a>.</div>
+  </section>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

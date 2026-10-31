@@ -1,0 +1,5 @@
+{% extends "errors/base_error.html" %}
+{% block title %}Security check failed{% endblock %}
+{% block code %}Error 403{% endblock %}
+{% block heading %}Your form session expired{% endblock %}
+{% block message %}For your protection the form could not be submitted (CSRF check failed). Reload the page and try again.{% endblock %}

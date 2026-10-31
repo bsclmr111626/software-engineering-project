@@ -1,0 +1,33 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Sessions · Settings{% endblock %}
+{% block settings_title %}Sessions{% endblock %}
+{% block settings_body %}
+<header><h1>Sessions</h1><p>Where you are signed in. If you signed in on a shared or lost device, sign out everywhere else.</p></header>
+<section class="cg-settings-section" aria-labelledby="cur-h">
+  <h2 id="cur-h">This session</h2>
+  <div class="cg-panel cg-panel-body d-flex gap-4 align-items-start">
+    <span class="cg-icon-tile"><i class="bi bi-laptop" aria-hidden="true"></i></span>
+    <dl class="cg-ledger cg-ledger--compact flex-grow-1 mb-0">
+      <dt>Device</dt><dd>{{ agent }} <span class="tag ms-1">This device</span></dd>
+      <dt>Signed in</dt><dd>{% if started %}{{ started|date:"Y-m-d H:i" }} UTC{% else %}Before session tracking was available{% endif %}</dd>
+      <dt>IP address</dt><dd class="mono">{{ ip|default:"—" }}</dd>
+      <dt>Expires</dt><dd>{% if expires_at_close %}When you close the browser, and at the latest {{ expires|date:"Y-m-d H:i" }} UTC{% else %}{{ expires|date:"Y-m-d H:i" }} UTC{% endif %} ({{ session_hours }}-hour limit)</dd>
+    </dl>
+  </div>
+  <form method="post" action="{% url 'accounts:logout' %}" class="mt-3">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign out of this session</button></form>
+</section>
+<section class="cg-settings-section" aria-labelledby="other-h">
+  <h2 id="other-h">Other sessions</h2>
+  <p class="cg-section-help">Signs out every browser and device except this one. They will need your password to sign in again. The action is recorded in your security activity.</p>
+  <form method="post" action="{% url 'settings:revoke_sessions' %}" data-confirm="Sign out of every other session?">
+    {% csrf_token %}
+    <button class="btn btn-outline-danger" type="submit"><i class="bi bi-shield-x" aria-hidden="true"></i> Sign out of all other sessions</button>
+  </form>
+</section>
+<section class="cg-settings-section" aria-labelledby="hist-h">
+  <h2 id="hist-h">Recent sign-ins</h2>
+  <ul class="cg-row-list cg-row-list--plain">
+    {% for e in recent_logins %}<li><span class="mono small">{{ e.created_at|date:"Y-m-d H:i" }} UTC</span><span class="mono small text-muted">{{ e.ip_address|default:"—" }}</span></li>{% empty %}<li class="text-muted">No sign-ins recorded.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

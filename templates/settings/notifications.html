@@ -1,0 +1,16 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Notifications · Settings{% endblock %}
+{% block settings_title %}Notifications{% endblock %}
+{% block settings_body %}
+<header><h1>Notifications</h1><p>Choose what appears in your <a href="{% url 'core:notifications' %}">notification inbox</a> and in the count on the bell in the header.</p></header>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="cg-settings-section">
+    {% include "settings/_switch.html" with field=form.notify_shared_reports %}
+    {% include "settings/_switch.html" with field=form.notify_remediation_due %}
+    {% include "settings/_switch.html" with field=form.notify_account_security %}
+  </div>
+  <div class="cg-note mb-4"><i class="bi bi-envelope" aria-hidden="true"></i><p>Notifications are shown inside CodeGuard only. This deployment sends email just for password resets.</p></div>
+  <div class="cg-form-actions"><button class="btn btn-primary" type="submit">Save notification settings</button></div>
+</form>
+{% endblock %}

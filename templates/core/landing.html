@@ -1,0 +1,178 @@
+{% extends "layouts/public.html" %}
+{% load codeguard_tags %}
+{% block title %}Software supply chain risk simulation{% endblock %}
+{% block content %}
+<div class="cg-wrap">
+  <section class="cg-hero" aria-labelledby="hero-title">
+    <div>
+      <span class="cg-kicker">Software supply chain risk simulation</span>
+      <h1 id="hero-title" class="display">See how far a compromise could <em>travel</em> before it does.</h1>
+      <p class="lede">CodeGuard models the stages software passes through on its way to users. Choose a hypothetical attack, decide which security controls are in place, and get a deterministic, fully explained estimate of how far the compromise propagates and how much risk remains.</p>
+      <div class="cg-hero-cta">
+        {% if user.is_authenticated %}
+        <a class="btn btn-primary btn-lg" href="{% url 'core:start' %}">Open CodeGuard <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+        {% elif registration_open %}
+        <a class="btn btn-primary btn-lg" href="{% url 'accounts:register' %}">Create an account</a>
+        <a class="btn btn-outline-secondary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+        {% else %}
+        <a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+        {% endif %}
+        <a class="btn btn-link btn-lg" href="{% url 'core:help' %}">Read the methodology</a>
+      </div>
+    </div>
+    <figure class="cg-hero-art m-0">
+      {% include "illustrations/hero.html" %}
+      <figcaption class="cg-hero-caption"><span><i class="bi bi-info-circle" aria-hidden="true"></i> Illustrative scenario. CodeGuard never touches real systems.</span></figcaption>
+    </figure>
+  </section>
+</div>
+
+<section class="cg-proof" aria-label="CodeGuard at a glance">
+  <div class="cg-wrap cg-proof-inner">
+    <div class="cg-proof-item"><strong>{{ stages|length }}</strong><span>supply chain stages modeled, from workstation to production</span></div>
+    <div class="cg-proof-item"><strong>{{ scenario_total }}</strong><span>reference attack scenarios, plus your own custom ones</span></div>
+    <div class="cg-proof-item"><strong>{{ control_total }}</strong><span>security controls with documented assumptions</span></div>
+    <div class="cg-proof-item"><strong>1:1</strong><span>same inputs, same result: every run is reproducible</span></div>
+  </div>
+</section>
+
+<section class="cg-band cg-band--ink" id="problem" aria-labelledby="problem-title">
+  <div class="cg-wrap">
+    <div class="cg-band-intro">
+      <div>
+        <span class="cg-kicker">The problem</span>
+        <h2 id="problem-title" class="cg-band-title">Software is assembled from many hands. Each one is a way in.</h2>
+      </div>
+      <p>Code, dependencies, build automation and deployment credentials are owned by different people and tools. A weakness early in the chain is inherited by every stage after it, so protecting production alone leaves most of the path undefended.</p>
+    </div>
+    <div class="cg-problem">
+      <div>
+        <span class="cg-num">01</span>
+        <h3>Inherited trust</h3>
+        <p>A compromised developer account or a poisoned dependency arrives already trusted by the stages downstream.</p>
+      </div>
+      <div>
+        <span class="cg-num">02</span>
+        <h3>Automation holds the keys</h3>
+        <p>Pipelines and registries carry the credentials needed to publish and deploy, which makes them high-value stepping stones.</p>
+      </div>
+      <div>
+        <span class="cg-num">03</span>
+        <h3>Controls are hard to compare</h3>
+        <p>Teams rarely see which control actually removes the most risk for a given attack, so effort goes where it is easiest, not where it counts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cg-band" id="capabilities" aria-labelledby="cap-title">
+  <div class="cg-wrap">
+    <div class="cg-band-intro">
+      <div>
+        <span class="cg-kicker">Capabilities</span>
+        <h2 id="cap-title" class="cg-band-title">From a threat scenario to a remediation plan, with every step on the record.</h2>
+      </div>
+      <p class="text-muted">Everything below is part of CodeGuard today. Nothing is estimated by an opaque model: each number comes from formulas you can read in the methodology.</p>
+    </div>
+    <div class="cg-features">
+      <div class="cg-feature"><i class="bi bi-bug" aria-hidden="true"></i><h3>Threat library</h3><p>Reference attack scenarios with entry points, propagation rules, assumptions and business impact. Clone them or write your own private scenarios.</p></div>
+      <div class="cg-feature"><i class="bi bi-bezier2" aria-hidden="true"></i><h3>Propagation simulation</h3><p>A breadth-first walk of the scenario's rules through the five stages, deciding at every edge whether the compromise spreads, is blocked or stays below threshold.</p></div>
+      <div class="cg-feature"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i><h3>Inherent and residual risk</h3><p>Each run scores the chain with no controls and with your controls, per stage and overall, on a 0 to 100 scale with four risk classes.</p></div>
+      <div class="cg-feature"><i class="bi bi-shield-check" aria-hidden="true"></i><h3>Control recommendations</h3><p>For every control you have not enabled, CodeGuard re-runs the scenario with it and ranks the exact modeled reduction.</p></div>
+      <div class="cg-feature"><i class="bi bi-list-check" aria-hidden="true"></i><h3>Remediation tracking</h3><p>Commit to a recommended control, set a due date and status, and see it verified when a later run includes the control.</p></div>
+      <div class="cg-feature"><i class="bi bi-journal-richtext" aria-hidden="true"></i><h3>Reports and audit trail</h3><p>Every run keeps a versioned snapshot of its inputs, so reports never change. Exports, sharing and sign-ins are recorded in an append-only audit log.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cg-band cg-band--sunken" id="how-it-works" aria-labelledby="how-title">
+  <div class="cg-wrap">
+    <div class="cg-band-intro">
+      <div>
+        <span class="cg-kicker">How simulations work</span>
+        <h2 id="how-title" class="cg-band-title">Four steps, one deterministic rule set.</h2>
+      </div>
+      <p class="text-muted">A run walks the scenario's propagation rules from its entry stage. Preventive controls lower the probability of each hop; an edge propagates only when what remains meets the threshold.</p>
+    </div>
+    <ol class="cg-steps-flow">
+      <li>
+        <h3>Choose a scenario</h3>
+        <p>Pick an attack from the threat library. Its entry stage, likelihood, severity and impact are prefilled and adjustable for the run.</p>
+        <svg class="illo" viewBox="0 0 200 72" aria-hidden="true" focusable="false"><rect class="i-crit-soft" x="10" y="20" width="56" height="32" rx="8"/><path class="i-dash" d="M66 36 h120"/><circle class="i-node" cx="110" cy="36" r="6"/><circle class="i-node" cx="150" cy="36" r="6"/><circle class="i-node" cx="186" cy="36" r="6"/></svg>
+      </li>
+      <li>
+        <h3>Set the controls</h3>
+        <p>Enable the controls that exist in your environment. Each one protects specific stages with a documented, illustrative effectiveness.</p>
+        <svg class="illo" viewBox="0 0 200 72" aria-hidden="true" focusable="false"><rect class="i-paper" x="10" y="12" width="84" height="20" rx="5"/><rect class="i-accent" x="16" y="18" width="8" height="8" rx="2"/><rect class="i-paper" x="10" y="40" width="84" height="20" rx="5"/><rect class="i-sunken" x="16" y="46" width="8" height="8" rx="2"/><rect class="i-paper" x="106" y="12" width="84" height="20" rx="5"/><rect class="i-accent" x="112" y="18" width="8" height="8" rx="2"/></svg>
+      </li>
+      <li>
+        <h3>Propagate</h3>
+        <p>Each edge is evaluated once: effective probability = edge probability × (1 − preventive coverage). At or above the threshold, it spreads.</p>
+        <svg class="illo" viewBox="0 0 200 72" aria-hidden="true" focusable="false"><path class="i-path-crit" d="M20 50 C 50 50, 50 22, 80 22"/><path class="i-block" d="M120 22 C 140 22, 150 50, 176 50"/><circle class="i-crit-soft" cx="20" cy="50" r="9"/><circle class="i-crit-soft" cx="100" cy="22" r="9"/><circle class="i-paper" cx="180" cy="50" r="9"/><circle class="i-low-soft" cx="146" cy="36" r="8"/></svg>
+      </li>
+      <li>
+        <h3>Read the result</h3>
+        <p>See where it spread, which controls mattered, what each recommendation would remove, and compare runs before and after.</p>
+        <svg class="illo" viewBox="0 0 200 72" aria-hidden="true" focusable="false"><rect class="i-sunken" x="14" y="44" width="22" height="20" rx="3"/><rect class="i-accent" x="42" y="30" width="22" height="34" rx="3"/><rect class="i-sunken" x="84" y="20" width="22" height="44" rx="3"/><rect class="i-accent" x="112" y="40" width="22" height="24" rx="3"/><path class="i-line" d="M8 64 h184"/></svg>
+      </li>
+    </ol>
+
+    <div class="cg-split mt-5">
+      <div>
+        <h3 class="h5 mb-3">The five modeled stages</h3>
+        <ol class="cg-row-list cg-row-list--plain">
+          {% for stage in stages %}
+          <li>
+            <span class="d-flex align-items-center gap-3"><span class="cg-chain-icon"><i class="bi bi-{{ stage.icon }}" aria-hidden="true"></i></span><span><strong>{{ stage.name }}</strong><span class="cg-cell-sub">{{ stage.description|truncatechars:110 }}</span></span></span>
+            <span class="tag tag-mono">0{{ stage.position }}</span>
+          </li>
+          {% empty %}
+          <li class="text-muted">Stages appear after the database is seeded (<code>python manage.py seed_codeguard</code>).</li>
+          {% endfor %}
+        </ol>
+      </div>
+      <div>
+        <h3 class="h5 mb-3">The scoring, in full</h3>
+        <div class="cg-formula-card">
+          <div><span>Stage risk</span>likelihood × (severity / 5) × (impact / 5)</div>
+          <div><span>Residual risk</span>stage risk × (1 − mitigating coverage)</div>
+          <div><span>Combined controls</span>1 − ∏(1 − effectivenessᵢ)</div>
+          <div><span>Overall</span>Σ(weight × stage risk) / Σ weight</div>
+        </div>
+        <div class="cg-tags mt-3">
+          {% for lower, label in bands %}<span class="cg-badge risk-{{ label }}"><i class="bi {{ label|risk_icon }}" aria-hidden="true"></i>{{ label|title }} ≥ {{ lower|floatformat:0 }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cg-band" id="roles" aria-labelledby="roles-title">
+  <div class="cg-wrap">
+    <span class="cg-kicker">Roles and access</span>
+    <h2 id="roles-title" class="cg-band-title">Built for a security team, with authorization enforced on the server.</h2>
+    <div class="cg-roles">
+      <div><h3><i class="bi bi-eye" aria-hidden="true"></i> Viewer</h3><p>Browses the threat library and control catalog and reads reports that analysts share.</p></div>
+      <div><h3><i class="bi bi-person-gear" aria-hidden="true"></i> Analyst</h3><p>Also writes private scenarios, runs simulations, shares and exports reports and keeps a remediation plan.</p></div>
+      <div><h3><i class="bi bi-buildings" aria-hidden="true"></i> Administrator</h3><p>Also publishes shared scenarios, manages user roles and reviews the complete audit log.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cg-band cg-band--ink" aria-labelledby="cta-title">
+  <div class="cg-wrap cg-cta">
+    <div>
+      <h2 id="cta-title" class="cg-band-title mb-3">Start with a reference scenario.</h2>
+      <p class="mb-0">Start from a reference scenario, run it once without controls to see the inherent picture, then add controls and compare.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if user.is_authenticated %}
+      <a class="btn btn-on-ink btn-lg" href="{% url 'core:start' %}">Open CodeGuard</a>
+      {% else %}
+      {% if registration_open %}<a class="btn btn-on-ink btn-lg" href="{% url 'accounts:register' %}">Create an account</a>{% endif %}
+      <a class="btn btn-outline-on-ink btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
