@@ -1,0 +1,15 @@
+{
+  "name": "codeguard-browser-checks",
+  "private": true,
+  "description": "Optional browser-based verification for CodeGuard: axe-core accessibility audit, keyboard checks and an end-to-end user journey. Not needed to run the app.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "audit": "node audit.mjs",
+    "errors": "node errstates.mjs",
+    "journey": "node journey.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.10.2"
+  }
+}
