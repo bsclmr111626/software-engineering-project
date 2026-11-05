@@ -6,6 +6,8 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("threats/", include("threats.urls")),
     path("simulations/", include("simulation.urls")),
+    path("reports/", include("simulation.report_urls")),
+    path("settings/", include("accounts.settings_urls")),
     path("remediation/", include("remediation.urls")),
     path("audit/", include("audit.urls")),
     path("admin/", admin.site.urls),

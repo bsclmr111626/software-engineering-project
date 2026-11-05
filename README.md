@@ -15,15 +15,40 @@ CodeGuard is an **educational** web application that shows how a security compro
 - **Before/after comparison**: rerun with different controls and compare runs stage by stage.
 - **Remediation plan**: add a recommended control to a private plan, track status, due date and notes, and see it verified when a later run with the control enabled confirms the modeled reduction.
 - **Historical reports**: immutable, versioned snapshots; CSV export; optional read-only sharing.
-- **Matplotlib charts**: overall risk, risk by stage, propagation outcomes, before/after, and dashboard distribution.
-- **Dashboard**: live metrics from the database, with empty states.
+- **Multi-page product shell**: a sidebar organised the way an analyst works (Overview; Model: Supply chain, Threat library, Security controls; Simulate: Simulations, Results; Analyze and respond: Risk analysis, Remediation; Records: Reports, Activity and audit), breadcrumbs, a notifications inbox and an account menu. See [Information architecture](#information-architecture).
+- **Supply chain explorer**: the five stages with their assets, protecting controls, entry scenarios, a propagation graph aggregated across scenarios, and per-stage history.
+- **Results workspace**: each run opens on a summary (headline risk, plain-language explanation, propagation diagram, top recommendations, affected assets) with tabs for stage analysis, every evaluated path, controls and recommendations, and inputs and method. Any run can also be opened as a printable assessment document.
+- **Risk analysis**: inherent vs residual trend, exposure by stage, the average effect of each control, and run comparison, scoped to your runs or everything visible to you.
+- **Charts**: inline SVG charts drawn from the design tokens (each with a text description, keyboard tooltips and a data table) plus Matplotlib charts for per-run detail.
+- **Overview**: live metrics from the database, with empty states; nothing is hardcoded.
 - **Roles**: Administrator, Analyst and Viewer, enforced on the server, plus object ownership.
 - **Audit log**: append-only (single and bulk changes refused) and sanitised (never stores passwords or tokens), with a retention command.
 - **Security hardening**: sign-in throttling, a registration policy (open, allowed email domains, or closed), strict CSP, security headers, CSRF, IDOR protection, secure cookie settings, and friendly error pages.
 - **Operations**: `/healthz/` health check, request IDs on every response and log line, optional JSON logs, online verified backups (`backup_db`), and a [deployment guide](docs/deployment.md).
-- **Light and dark themes**: paper-like light theme by default, a dark theme that follows the OS setting until you pick one with the sidebar toggle (saved in the browser).
-- **Accessibility**: WCAG 2.2 AA automated audit (axe-core) at desktop and phone widths. Since the paper-theme redesign, four colour pairs fail text contrast (see Accessibility below); every other check passes. The app also provides keyboard operation with visible focus, labelled forms whose errors are announced, and text alternatives for the diagram and charts.
-- **Tests and CI**: 268 automated tests, 96% coverage, a Jenkins pipeline, GitHub Actions, Ruff, and optional browser-based verification tools.
+- **Settings center**: Profile, Account (email change with password confirmation), Appearance and theme (light, dark or system; three accent themes), Text and typography, Display (density, timestamps, rows per page, start page), Accessibility (reduced motion, increased contrast, underlined links), Notifications, Privacy and data (share-by-default, JSON export of your data), Password and security, Sessions (sign out everywhere else), and for administrators Organization and Users and roles. Every setting is stored per user and changes behaviour.
+- **Design system**: a distinct editorial identity (warm paper, graphite ink, an ultramarine signal colour; Newsreader, Instrument Sans and JetBrains Mono) defined as CSS tokens, with light and dark themes. See [DESIGN.md](DESIGN.md).
+- **Accessibility**: WCAG 2.2 AA automated audit (axe-core) of 47 pages at desktop and phone widths in both themes with 0 violations; keyboard operation with visible focus, labelled forms whose errors are announced, and text alternatives plus data tables for the diagram and charts.
+- **Tests and CI**: 332 automated tests, 96% coverage, a Jenkins pipeline, GitHub Actions, Ruff, and optional browser-based verification tools.
+
+## Information architecture
+
+| Area | URL | Purpose |
+|---|---|---|
+| Landing | `/` | Public product page: problem, capabilities, how simulations work, roles. Its figures are live counts. |
+| Overview | `/overview/` | Key figures, average residual risk by class, next actions, where compromises land, recent activity. |
+| Supply chain | `/supply-chain/`, `/supply-chain/<stage>/` | Stages, assets, controls, entry scenarios, aggregated propagation graph, per-stage history. |
+| Threat library | `/threats/` | Searchable, filterable scenario management (tabs: active, my private, archived). |
+| Security controls | `/threats/controls/` | Control catalog by category and protected stage. |
+| Simulations | `/simulations/`, `/simulations/new/` | Start from a scenario (grouped by entry stage); a four-step configuration workflow. |
+| Results | `/simulations/results/`, `/simulations/<id>/` plus `stages/`, `paths/`, `controls/`, `method/` | Result cards with stage strips; a tabbed results workspace per run. |
+| Risk analysis | `/risk/`, `/simulations/compare/` | Trends, exposure by stage, control effect, run comparison. |
+| Remediation | `/remediation/` | Plan with status tabs, prioritisation (due date, modeled reduction, recency) and verification. |
+| Reports | `/reports/`, `/reports/<id>/` | Archive of every run, CSV exports, printable assessment documents. |
+| Activity and audit | `/audit/` | Activity timeline grouped by day, and the full audit table. |
+| Notifications | `/notifications/` | Shared reports, remediation deadlines and account security events, derived from real records. |
+| Settings | `/settings/...` | Profile, account, appearance, typography, display, accessibility, notifications, privacy, security, sessions; organization and users for administrators. |
+
+`/dashboard/` and `/accounts/users/` redirect to their new locations.
 
 ## Technology stack
 
@@ -146,24 +171,24 @@ To run every gate the Jenkins pipeline runs, use `scripts\ci_local.ps1` (Windows
 
 ### Last verified results
 
-Last re-verified on 2026-10-26 (engineering review round) on Windows 11 with Python 3.12.10.
+Last re-verified on 2026-10-28 (product redesign) on Windows 11 with Python 3.12.10. Rows marked *(2026-10-26)* were not re-run in the redesign round.
 
 | Check | Result |
 |---|---|
-| `pytest` | **268 passed** |
-| Coverage | **96%** total; **99%** on the core engine modules (gate is 85%) |
+| `pytest` | **332 passed** |
+| Coverage | **96%** total (gate is 85%) |
 | Ruff lint/format, `manage.py check`, `makemigrations --check` | Clean |
 | `scripts/ci_deploy_check.py` (`check --deploy`) | 0 errors; 2 intentional HSTS warnings, and `codeguard.W001` because the default registration mode is `open` (see Security notes) |
-| `scripts/ci_dependency_audit.py` (`pip-audit`) | No known vulnerabilities. Offline behaviour also tested: exit 2 (UNSTABLE) after the 180 s cap. |
-| Jenkinsfile commands rehearsed on a clean checkout with a fresh venv (`scripts/rehearse_jenkinsfile.py`) | SUCCESS (not a Jenkins execution; see below) |
-| Concurrent writes: 4 processes × 50 simulation runs on one SQLite file | 200/200 completed (Django defaults: 44/200) |
-| axe-core 4.10.2, WCAG 2.0/2.1/2.2 A+AA and best practice, 24 pages at 1280px and 390px, light and dark themes | `color-contrast` only (palette, see Accessibility); 0 other violations |
-| Validation-error states (5) with axe-core | `color-contrast` only in 4 states; 0 other violations |
-| Keyboard: visible focus on every tab stop; skip link first | Passed on all 24 pages |
-| Reflow at 390px (no zoom-out or horizontal scroll) | Passed on all 24 pages |
-| Browser-driven user journey in real Chrome (keyboard-only key steps) | 14/14 checks passed |
-| Remediation workflow in real Chrome (run, add to plan, update, re-run, verified, audited) | 8/8 checks passed |
-| Live authorization matrix (second analyst, viewer, anonymous), including remediation items | 52/52 checks passed; database unchanged |
+| `scripts/ci_dependency_audit.py` (`pip-audit`) *(2026-10-26)* | No known vulnerabilities. Offline behaviour also tested: exit 2 (UNSTABLE) after the 180 s cap. |
+| Jenkinsfile commands rehearsed on a clean checkout with a fresh venv (`scripts/rehearse_jenkinsfile.py`) *(2026-10-26)* | SUCCESS (not a Jenkins execution; see below) |
+| Concurrent writes: 4 processes × 50 simulation runs on one SQLite file *(2026-10-26)* | 200/200 completed (Django defaults: 44/200) |
+| axe-core 4.10.2, WCAG 2.0/2.1/2.2 A+AA and best practice, 47 pages at 1280px and 390px, light and dark themes | **0 violations** |
+| Validation-error states (5) with axe-core | 0 violations |
+| Keyboard: visible focus on every tab stop; skip link first | Passed on all 47 pages, including chart marks |
+| Reflow at 390px (no zoom-out or horizontal scroll) | Passed on all 47 pages |
+| Browser-driven user journey in real Chrome (keyboard-only key steps, through the configuration stepper and result tabs) | 14/14 checks passed |
+| Remediation workflow in real Chrome (run, add to plan, update, re-run, verified, audited) *(2026-10-26)* | 8/8 checks passed |
+| Live authorization matrix (second analyst, viewer, anonymous), now also covering result tabs, report documents, admin-only settings and the data export | All checks passed; database unchanged |
 
 Passing tests do not prove the application is free of vulnerabilities. Automated accessibility checks do not replace testing with a real screen reader, which has **not** been done.
 
@@ -210,9 +235,7 @@ Passing tests do not prove the application is free of vulnerabilities. Automated
 
 The app was audited against WCAG 2.2 AA with automated tools and, in its original dark theme, fixed until every check passed. The audit covered 24 pages, 5 error states, keyboard focus and reflow. Fixes made during the audit:
 
-**Open after the paper-theme redesign (2026-10-26):** the DESIGN.md palette fails WCAG AA text contrast in four pairs (white on `--accent` 4.38:1; `--sev-low`, `--sev-med`, `--sev-high` on their tints 4.30, 3.59 and 4.27:1), so axe now reports `color-contrast` on 20 of 22 audited pages. All other checks still pass.
-
-**Dark mode (2026-10-26):** in the dark theme the only failing pair is white on the dark `--accent` (3.58:1, the primary button); every badge, table, form and the audit log pass. Audit both themes with `npm run audit` and `CODEGUARD_THEME=dark npm run audit` (report: `audit-report-dark.json`).
+**Product redesign (2026-10-28):** the new palette was chosen with computed contrast, which resolves the earlier `color-contrast` failures: every text pair, including each risk colour on its own tint and the label on the accent, is at least 4.7:1 in both themes. 47 pages pass axe-core with 0 violations in light and dark (`npm run audit`, `CODEGUARD_THEME=dark npm run audit`). New in this round: chart marks are focusable with a visible ring and a tooltip, every chart has a "Show as a table" alternative, and Settings > Accessibility adds reduced motion, increased contrast and always-underlined links.
 
 - **Contrast (original dark theme, superseded).** Primary buttons darkened from 3.7:1 to 5.4:1.
 - **Error announcements.** Form errors are now linked to their fields (`aria-invalid` with `aria-describedby` pointing to the error text). Previously the referenced IDs didn't exist.
@@ -290,7 +313,7 @@ simulation/           engine (domain, engine, propagation, risk, recommendations
                       persistence (models, services), views, charts, visual (SVG), exports (CSV)
 remediation/          remediation plan: items from recommendations, status, verification
 audit/                append-only audit events, sanitising service, log view, retention command
-core/                 landing, dashboard, methodology, error handlers, CSP and request-ID middleware,
+core/                 landing, overview, supply chain, risk analysis, notifications, methodology, error handlers, CSP and request-ID middleware,
                       logging, health check, backup command, template tags
 templates/            base layout, components, and per-app pages
 static/               css/codeguard.css, js/app.js, vendor/ (Bootstrap, icons), images/
