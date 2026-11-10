@@ -9,6 +9,10 @@ line-length = 120
 target-version = "py312"
 extend-exclude = ["*/migrations/*", ".venv", "staticfiles"]
 
+[tool.ruff.format]
+# Code blocks in Markdown quote real files and examples verbatim; do not restyle them.
+exclude = ["*.md"]
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "DJ", "S"]
 ignore = [
