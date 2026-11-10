@@ -4,6 +4,57 @@ CodeGuard is an **educational** web application that shows how a security compro
 
 > CodeGuard is a simulation for teaching and discussion. It never scans, attacks or connects to real systems, its scenarios are hypothetical, and its numbers are illustrative model outputs, **not** a replacement for a professional security assessment.
 
+## Quick start (run it on your own PC)
+
+You need **Python 3.12 or newer** (`python --version`) and Git. Run these in order; the app then runs on your own computer at <http://127.0.0.1:8000/>.
+
+**Windows (PowerShell)**
+
+```powershell
+git clone https://github.com/bsclmr111626/software-engineering-project.git codeguard
+cd codeguard
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+pip install -r requirements.txt
+Copy-Item .env.example .env
+python manage.py migrate
+python manage.py seed_codeguard --demo-users
+python manage.py runserver
+```
+
+**Linux / macOS**
+
+```bash
+git clone https://github.com/bsclmr111626/software-engineering-project.git codeguard
+cd codeguard
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py seed_codeguard --demo-users
+python manage.py runserver
+```
+
+Open <http://127.0.0.1:8000/> and sign in with a demo account. All three share the password `CodeGuard-demo-2024`:
+
+| Username | Role |
+|---|---|
+| `demo_admin` | Admin: everything, plus users, organization settings and the audit log |
+| `demo_analyst` | Analyst: create scenarios and run simulations |
+| `demo_viewer` | Viewer: read-only |
+
+Stop the server with **Ctrl + C**. Next time, only `cd codeguard`, activate the virtual environment and `python manage.py runserver` are needed.
+
+Common problems:
+
+- *`DJANGO_SECRET_KEY must be set`*: the `.env` file is missing. Run the `Copy-Item` / `cp` step.
+- *`no such table`*: run `python manage.py migrate`.
+- *Installation fails on `numpy` or `matplotlib`*: your Python is older than 3.12.
+- *`http://127.0.0.1:8000` does not open*: that address is your own computer, so the server must be running in your own terminal.
+
+The demo accounts are for local use only. The full installation, configuration and deployment details follow below.
+
 ## Features
 
 - **Five-stage supply chain model**: IDE / Developer Environment → Version Control → CI/CD Pipeline → Software Registry → Production, as a directed graph with forward, bypass and reverse edges.
@@ -87,25 +138,25 @@ The simulation engine works on immutable dataclasses (`simulation/domain.py`) an
 ### Windows (PowerShell)
 
 ```powershell
-git clone <your-repo-url> codeguard
+git clone https://github.com/bsclmr111626/software-engineering-project.git codeguard
 cd codeguard
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 python -m pip install --upgrade pip
 pip install -r requirements-dev.txt   # or requirements.txt for runtime only
-Copy-Item .env.example .env           # then edit DJANGO_SECRET_KEY
+Copy-Item .env.example .env           # optional for local use: set your own DJANGO_SECRET_KEY
 ```
 
 ### Linux / macOS (bash or zsh)
 
 ```bash
-git clone <your-repo-url> codeguard
+git clone https://github.com/bsclmr111626/software-engineering-project.git codeguard
 cd codeguard
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
-cp .env.example .env                  # then edit DJANGO_SECRET_KEY
+cp .env.example .env                  # optional for local use: set your own DJANGO_SECRET_KEY
 ```
 
 Generate a secret key with:
