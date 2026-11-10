@@ -5,10 +5,9 @@ from this machine:
 
 - `Jenkinsfile` — configured, **never executed on a Jenkins server**. Its commands were
   rehearsed by `scripts/rehearse_jenkinsfile.py` (README: SUCCESS on 2026-10-26).
-- `.github/workflows/ci.yml` — configured. Whether it has run on GitHub could not be checked
-  here (`gh` is not installed). Until commit `eef6716`, `templates/reports/` was git-ignored and a
-  checkout of `main` failed 9 tests (reproduced with a fresh clone on 2026-11-10); a fresh clone
-  of `eef6716` passes all 337.
+- `.github/workflows/ci.yml` — configured and **passing**: run #7 on commit `8ca8b36`, 2026-11-10, 1 min 5 s. Runs #1–#6
+  failed, first because `templates/reports/` was git-ignored (fixed in `eef6716`), then because
+  Ruff's format check rewrote Python quoted in the new Markdown docs (fixed in `8ca8b36`).
 
 ## Jenkinsfile stages
 

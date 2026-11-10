@@ -12,11 +12,13 @@ tests count once per parameter.
 | Core coverage gate | `coverage report --include=simulation/engine.py,…risk.py,…propagation.py,…recommendations.py --fail-under=85` | **99 %**, exit 0 (engine 99 %, propagation 100 %, recommendations 98 %, risk 97 %) |
 | Fresh `git clone` of HEAD `8f5d092`, same interpreter | `pytest` | **9 failed, 328 passed**: `TemplateDoesNotExist: reports/list.html` / `reports/document.html` (the templates were git-ignored; see the master document, "Known gaps") |
 | Fresh `git clone` of `eef6716` (the fix) | `pytest` | **337 passed** |
-| Lint / format | `ruff check .`, `ruff format --check .` | clean; 147 files formatted |
+| Lint / format | `ruff check .`, `ruff format --check .` | clean (Markdown excluded from formatting since `8ca8b36`) |
 | Migrations | `makemigrations --check --dry-run` | No changes detected |
 | Deployment check | `python scripts/ci_deploy_check.py` | 0 errors; 3 warnings: `codeguard.W001` (open registration), `security.W005`, `security.W021` (HSTS subdomains/preload) |
+| Dependency audit | `python scripts/ci_dependency_audit.py` | No known vulnerabilities, exit 0 |
+| GitHub Actions CI | push of `8ca8b36` | **run #7 passed** (all gates, 1 min 5 s); runs #1–#6 failed |
 
-Not run on 2026-11-10: `pip-audit` (needs network), the Jenkins rehearsal, the Node browser
+Not run on 2026-11-10: the Jenkins rehearsal, the Node browser
 tools and `tools/authz_live.py` (need a running server). Their last recorded results are in the
 README's "Last verified results" table, dated 2026-10-26/28.
 

@@ -81,7 +81,7 @@ Diagram and stage list: [CI/CD](diagrams/ci-cd.md).
 | Pipeline | Defined in | Executed? | Deploys? |
 |---|---|---|---|
 | Jenkins (declared primary) | `Jenkinsfile` (7 stages, Declarative) | **Never on a Jenkins server.** Commands rehearsed by `scripts/rehearse_jenkinsfile.py` on 2026-10-26 (README: SUCCESS). Groovy parsing, plugins (`junit`, `archiveArtifacts`, `recordCoverage`, `timestamps`), `post` blocks and agents are unverified | no |
-| GitHub Actions (supplementary) | `.github/workflows/ci.yml` | Unknown from this machine (`gh` not installed). The `main` pushed before commit `eef6716` lacked the Reports templates, so a run there would fail | no |
+| GitHub Actions (supplementary) | `.github/workflows/ci.yml` | **Yes, passing** since run #7 on commit `8ca8b36`, 2026-11-10, 1 min 5 s. Runs #1–#6 failed: missing Reports templates (fixed in `eef6716`), then Ruff formatting Markdown code blocks (fixed in `8ca8b36`) | no |
 | Local | `scripts/ci_local.ps1`, `scripts/ci_local.sh` | Can be run any time | no |
 
 The Jenkinsfile's design choices that matter: `disableConcurrentBuilds`, 30-minute timeout, an

@@ -172,8 +172,8 @@ privacy notice.
 
 All Python dependencies are pinned in `requirements.txt` and `requirements-dev.txt`;
 `scripts/ci_dependency_audit.py` runs `pip-audit` with explicit exit codes (0 clean, 1 vulnerable,
-2 incomplete). README records "No known vulnerabilities" on 2026-10-26; it was not re-run on
-2026-11-10 (network). Bootstrap and Bootstrap Icons are vendored (no CDN), but their versions
+2 incomplete). It reported "No known vulnerabilities" when re-run on 2026-11-10, and the same
+check passes in GitHub Actions (run #7). Bootstrap and Bootstrap Icons are vendored (no CDN), but their versions
 are not recorded in the repository. Hashes (`--require-hashes`) are not used.
 
 ## 8. Summary of gaps

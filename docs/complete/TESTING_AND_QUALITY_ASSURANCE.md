@@ -13,16 +13,18 @@ recorded** in the README or `docs/test-plan.md`. Inventory: [tests](references/t
 | Core gate | `coverage report --include=simulation/engine.py,simulation/risk.py,simulation/propagation.py,simulation/recommendations.py --fail-under=85` | **99 %**, passed |
 | Full suite on a fresh `git clone` of `8f5d092` | same interpreter | **9 failed, 328 passed** — `templates/reports/*.html` git-ignored |
 | Full suite on a fresh `git clone` of `eef6716` (the fix) | same interpreter | **337 passed** |
-| Lint and format | `ruff check .`; `ruff format --check .` | clean; 147 files already formatted |
+| Lint and format | `ruff check .`; `ruff format --check .` | clean (Markdown excluded from formatting since `8ca8b36`) |
+| Dependency audit | `python scripts/ci_dependency_audit.py` | No known vulnerabilities, exit 0 |
+| GitHub Actions | push of `8ca8b36` | **run #7 passed**, every gate, 1 min 5 s |
 | Migrations consistent | `manage.py makemigrations --check --dry-run` | No changes detected |
 | Migrations from scratch | `migrate` on an empty scratch DB, then `seed_codeguard` | all applied; 5 stages, 14 controls, 6 scenarios |
 | Reversible data migration | `migrate accounts 0005`, then `migrate accounts` | unapplied and re-applied `0006` |
 | Deployment check | `python scripts/ci_deploy_check.py` | 0 errors, 3 warnings (`codeguard.W001`, `security.W005`, `security.W021`) |
 | Engine worked example | engine called on seeded data | matches the hand calculation in `SIMULATION_AND_RISK_METHODOLOGY.md` |
 
-**Not run** on 2026-11-10: `pip-audit` (needs network), `scripts/rehearse_jenkinsfile.py`, the
+**Not run** on 2026-11-10: `scripts/rehearse_jenkinsfile.py`, the
 Node/Chrome checks in `tools/a11y/`, `tools/authz_live.py` (needs a running server and the
-journey output), and any Jenkins or GitHub Actions run.
+journey output), and any Jenkins run.
 
 ## 2. Earlier results that are recorded but were not repeated
 
@@ -88,8 +90,8 @@ its requirement was not re-judged.
 ## 6. What the tests do not cover
 
 * **Clean checkouts in CI.** Until commit `eef6716` the suite passed only in the developer's working
-  tree (the Reports templates were git-ignored). A fresh local clone now passes, but no CI run
-  on GitHub or Jenkins is on record.
+  tree (the Reports templates were git-ignored). A fresh clone now passes locally and GitHub
+  Actions passed on run #7; no Jenkins run is on record.
 * **Real HTTPS, a real WSGI server and a reverse proxy** (examples in `docs/deployment.md` are
   marked "not tested here").
 * **Concurrency** beyond the one recorded 200-run experiment.

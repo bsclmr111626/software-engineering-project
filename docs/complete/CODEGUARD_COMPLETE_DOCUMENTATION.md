@@ -1,7 +1,7 @@
 # CodeGuard — Complete Technical Documentation
 
 **Software Supply Chain Risk Simulator** · documentation generated from the source at commit
-`8f5d092` plus the working tree, on 2026-11-10; updated after the fix in commit `eef6716`.
+`8f5d092` plus the working tree, on 2026-11-10; updated after commits `eef6716` (Reports templates) and `8ca8b36` (CI passing).
 
 This master document gives the whole picture in one read. Each section ends with links to the
 detailed documents, which carry the exact formulas, tables and tutorials:
@@ -108,7 +108,7 @@ criticality in the overall score. Status: **implemented and verified**
 | Light/dark themes, accent, surface, text size, density, reduced motion, contrast | Implemented and verified (server side); browser rendering unverified here | `test_preferences_are_rendered_on_the_html_element`, design tests |
 | WCAG 2.2 AA automated audit (axe-core, 47 pages) | Implemented but unverified | README records 0 violations (2026-10-28); not re-run |
 | Live HTTP authorization matrix | Implemented but unverified | README records "all checks passed"; not re-run |
-| GitHub Actions workflow | Implemented but unverified | run status unknown; the pushed `main` before commit `eef6716` lacked the Reports templates |
+| GitHub Actions workflow | Implemented and verified | first passing run: run #7 on commit `8ca8b36`, 2026-11-10, 1 min 5 s; runs #1–#6 failed (missing Reports templates, then a Markdown format check) |
 | Jenkins pipeline | Implemented but unverified | **never executed on Jenkins**; commands rehearsed only |
 | Production deployment guide | Partial | settings and commands tested; proxy/systemd examples untested; no server exists |
 | Hosting on PythonAnywhere | Not implemented | discussed as a possible option only |
@@ -491,8 +491,9 @@ are not recorded here; IP addresses are the proxy's behind a proxy.
 96 % overall and 99 % on the four core engine modules (gate: 85 %); Ruff clean; no missing
 migrations; `check --deploy` has no errors. A fresh clone of `8f5d092` failed 9 tests because
 the Reports templates were git-ignored; after the fix in commit `eef6716` a fresh clone passes all 337. Browser accessibility checks, the live authorization
-matrix, pip-audit and the Jenkins rehearsal were not re-run (their earlier results are recorded
-in the README).
+matrix and the Jenkins rehearsal were not re-run (their earlier results are recorded in the
+README). `pip-audit` was re-run: no known vulnerabilities. GitHub Actions passed on its run #7
+(commit `8ca8b36`).
 
 Strategy: pure engine unit tests, service/view tests through Django's test client, integration
 tests, tests that enforce the design system on CSS and templates, Python-level accessibility
@@ -515,7 +516,10 @@ tests and optional browser tools. Details and gaps:
   clone ("commands only; not a Jenkins execution"); the README records SUCCESS on 2026-10-26.
   Before commit `eef6716` the rehearsal would have failed in the test stage (§16, gap 1).
 * **GitHub Actions.** `.github/workflows/ci.yml` mirrors the gates on every push to `main` and
-  every pull request. Whether it has run could not be checked from this machine.
+  every pull request. Runs #1–#6 failed; run #7 on commit `8ca8b36` (2026-11-10) **passed**
+  every gate in 1 min 5 s. The two causes of the earlier failures were the git-ignored Reports
+  templates (fixed in `eef6716`) and Ruff's format check rewriting Python code quoted in the new
+  Markdown docs (fixed in `8ca8b36` by excluding `*.md` from `ruff format`).
 * **CD.** None: no pipeline builds a release or deploys.
 
 Diagram: [diagrams/ci-cd.md](diagrams/ci-cd.md); details:
@@ -624,7 +628,7 @@ asset layer with trust relationships (M7).
 **Product and platform.** Single-tenant sharing (organizations need a product decision, H2);
 no MFA for CodeGuard accounts; no API; no background jobs; SQLite only.
 
-**Verification.** Jenkins never executed; GitHub Actions status unknown; no real deployment; no
+**Verification.** Jenkins never executed (GitHub Actions does pass, since run #7); no real deployment; no
 screen-reader test; no penetration test; browser and authorization checks last run 2026-10-26/28.
 
 **Immediate fixes suggested by this documentation pass**: the Reports templates and ignore rule
