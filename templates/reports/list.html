@@ -1,0 +1,71 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Reports{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Reports</li>{% endblock %}
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-eyebrow"><i class="bi bi-journal-richtext" aria-hidden="true"></i> Records</div>
+    <h1>Reports</h1>
+    <p class="lede">The archive of every simulation, each stored with a snapshot of its inputs so that reopening a report always shows the original result. Open any completed run as a printable assessment document or export it.</p>
+  </div>
+  <div class="cg-page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'reports:export_history' %}"><i class="bi bi-filetype-csv" aria-hidden="true"></i> Export my history</a>
+  </div>
+</div>
+
+<nav class="cg-tabs" aria-label="Whose reports">
+  <a href="{% query_with scope='mine' %}"{% if scope == 'mine' %} aria-current="page"{% endif %}>My reports</a>
+  <a href="{% query_with scope='shared' %}"{% if scope == 'shared' %} aria-current="page"{% endif %}>Shared reports</a>
+  <a href="{% query_with scope='all' %}"{% if scope == 'all' %} aria-current="page"{% endif %}>All visible to me</a>
+</nav>
+
+<form method="get" class="cg-filterbar" role="search" aria-label="Filter reports">
+  <input type="hidden" name="scope" value="{{ scope }}">
+  <div class="cg-filter cg-filter--grow"><label class="form-label" for="f-q">Scenario name</label><div class="cg-search"><i class="bi bi-search" aria-hidden="true"></i><input class="form-control" id="f-q" name="q" value="{{ q }}" placeholder="Search reports"></div></div>
+  <div class="cg-filter"><label class="form-label" for="f-status">Status</label>
+    <select class="form-select" id="f-status" name="status">
+      <option value="">Any status</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="d-flex gap-2"><button class="btn btn-outline-secondary" type="submit">Filter</button>{% if q or status %}<a class="btn btn-ghost" href="?scope={{ scope }}">Reset</a>{% endif %}</div>
+</form>
+
+<div class="cg-panel cg-panel--flush">
+  {% if page_obj.object_list %}
+  <div class="table-responsive">
+    <table class="table table-hover" aria-label="Simulation reports, newest first">
+      <thead><tr><th scope="col">Report</th><th scope="col">Executed</th><th scope="col">Owner</th><th scope="col">Status</th><th scope="col" class="num">Inherent</th><th scope="col" class="num">Residual</th><th scope="col" class="num">Compromised</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>
+        {% for run in page_obj %}
+        <tr>
+          <td><a href="{% url 'simulation:detail' run.id %}">{{ run.scenario_name }}</a><span class="cg-cell-sub"><code>{{ run.short_id }}</code> · scenario v{{ run.scenario_version }}{% if run.is_shared %} · shared{% endif %}</span></td>
+          <td class="small text-nowrap">{% when run.created_at %}</td>
+          <td class="small">{% if run.user == user %}You{% else %}{{ run.user.get_username }}{% endif %}</td>
+          <td>{% include "components/status.html" with status=run.status label=run.get_status_display %}</td>
+          <td class="num">{{ run.inherent_risk|default_if_none:"—" }}</td>
+          <td class="num">{% if run.residual_risk is not None %}<span class="cg-badge risk-{{ run.classification }}">{{ run.residual_risk }} {{ run.classification|title }}</span>{% else %}—{% endif %}</td>
+          <td class="num">{{ run.compromised_count }}</td>
+          <td class="text-end text-nowrap">
+            {% if run.status == 'completed' %}
+            <a class="btn btn-sm btn-ghost" href="{% url 'reports:document' run.id %}" title="Report document"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="visually-hidden">Report document for {{ run.scenario_name }}, {{ run.short_id }}</span></a>
+            <a class="btn btn-sm btn-ghost" href="{% url 'simulation:export_run' run.id %}" title="Export CSV"><i class="bi bi-filetype-csv" aria-hidden="true"></i><span class="visually-hidden">Export CSV for {{ run.scenario_name }}, {{ run.short_id }}</span></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} reports</span>{% include "components/pagination.html" %}</div>{% endif %}
+  {% else %}
+  <div class="cg-empty">
+    {% include "illustrations/empty.html" with kind="ledger" %}
+    <h2>No reports found</h2>
+    <p>{% if scope == 'mine' and not q and not status %}You have not run any simulations yet.{% else %}No reports match these filters.{% endif %}</p>
+    {% if user_can_simulate %}<a class="btn btn-outline-secondary" href="{% url 'simulation:configure' %}">Run a simulation</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

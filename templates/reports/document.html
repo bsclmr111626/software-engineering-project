@@ -1,0 +1,117 @@
+{% extends "layouts/app.html" %}
+{% load codeguard_tags %}
+{% block title %}Report: {{ run.scenario_name }}{% endblock %}
+{% block breadcrumbs %}<li><a href="{% url 'reports:list' %}">Reports</a></li><li aria-current="page">{{ run.scenario_name }}</li>{% endblock %}
+{% block content %}
+<div class="cg-page-actions cg-no-print justify-content-end mb-4">
+  <a class="btn btn-outline-secondary" href="{% url 'simulation:detail' run.id %}"><i class="bi bi-bezier2" aria-hidden="true"></i> Open interactive result</a>
+  <a class="btn btn-outline-secondary" href="{% url 'simulation:export_run' run.id %}"><i class="bi bi-filetype-csv" aria-hidden="true"></i> Export CSV</a>
+  <button class="btn btn-primary" type="button" data-print hidden><i class="bi bi-printer" aria-hidden="true"></i> Print or save as PDF</button>
+</div>
+
+<div class="cg-doc-layout">
+  <nav class="cg-toc cg-no-print" aria-label="Report contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#summary">Summary</a></li>
+      {% if run.status == 'completed' %}
+      <li><a href="#propagation">Propagation</a></li>
+      <li><a href="#stages">Stage results</a></li>
+      <li><a href="#paths">Paths evaluated</a></li>
+      <li><a href="#recommendations">Recommendations</a></li>
+      {% endif %}
+      <li><a href="#method">Inputs and limitations</a></li>
+    </ol>
+  </nav>
+
+  <article class="cg-doc" aria-labelledby="doc-title">
+    <header class="cg-report-cover">
+      <span class="cg-kicker">CodeGuard simulation report · run {{ run.short_id }}</span>
+      <h1 id="doc-title" class="display">{{ run.scenario_name }}</h1>
+      <dl class="cg-ledger cg-ledger--compact mt-4 mb-0">
+        <dt>Executed</dt><dd>{{ run.created_at|date:"Y-m-d H:i" }} UTC by {{ run.user.get_username }}</dd>
+        <dt>Status</dt><dd>{{ run.get_status_display }}{% if run.is_shared %} · shared with all users{% endif %}</dd>
+        <dt>Scenario version</dt><dd>{{ run.scenario_version }}{% if scenario_changed %} (the scenario has since changed; this report uses the stored snapshot){% endif %}</dd>
+        <dt>Entry point</dt><dd>{{ run.entry_stage_name }}</dd>
+      </dl>
+    </header>
+
+    <section id="summary" aria-labelledby="sum-h">
+      <h2 id="sum-h">1. Summary</h2>
+      {% if run.status == 'completed' %}
+      <p>With the enabled controls, the overall residual risk is <strong>{{ run.residual_risk }}</strong> ({{ run.classification }}), compared with an inherent risk of <strong>{{ run.inherent_risk }}</strong> ({{ result.inherent_classification }}) with no controls: a modeled reduction of {{ run.risk_reduction }} points. {{ run.compromised_count }} of {{ stage_results|length }} stages were compromised ({{ result.inherent_compromised_count }} without controls).</p>
+      <ol class="cg-explain mt-4">{% for line in result.explanation %}<li>{{ line }}</li>{% endfor %}</ol>
+      {% else %}
+      <p>This simulation did not complete: {{ run.error_message|default:"the run is still pending" }}. No partial results were saved.</p>
+      {% endif %}
+    </section>
+
+    {% if run.status == 'completed' %}
+    <section id="propagation" aria-labelledby="prop-h">
+      <h2 id="prop-h">2. Propagation</h2>
+      <div class="cg-pipeline-frame">
+        {% include "components/pipeline.html" with svg_id="doc-graph" svg_title="Simulated propagation through the supply chain stages" %}
+        <div class="mt-3">{% include "components/legend.html" %}</div>
+      </div>
+    </section>
+
+    <section id="stages" aria-labelledby="stg-h">
+      <h2 id="stg-h">3. Stage results</h2>
+      <div class="table-responsive">
+        <table class="table" aria-label="Outcome and risk for each stage">
+          <thead><tr><th scope="col">Stage</th><th scope="col">State</th><th scope="col" class="num">Inherent</th><th scope="col" class="num">Residual</th><th scope="col">Explanation</th></tr></thead>
+          <tbody>
+            {% for s in stage_results %}
+            <tr><td class="text-nowrap">{{ s.stage_name }}</td><td><span class="cg-badge state-{{ s.state }}"><i class="bi {{ s.state|state_icon }}" aria-hidden="true"></i>{{ s.state|state_label }}</span></td><td class="num">{{ s.inherent_risk }}</td><td class="num">{{ s.residual_risk }}</td><td class="small text-muted">{{ s.explanation }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if affected_assets %}
+      <h3>Assets at compromised stages</h3>
+      <ul>{% for row in affected_assets %}<li><strong>{{ row.stage.stage_name }}:</strong> {{ row.assets|join:", "|default:"none recorded" }}</li>{% endfor %}</ul>
+      {% endif %}
+    </section>
+
+    <section id="paths" aria-labelledby="pth-h">
+      <h2 id="pth-h">4. Paths evaluated</h2>
+      <div class="table-responsive">
+        <table class="table table-sm" aria-label="Propagation edges evaluated in this run">
+          <thead><tr><th scope="col">#</th><th scope="col">Path</th><th scope="col" class="num">Base</th><th scope="col" class="num">Effective</th><th scope="col">Outcome</th></tr></thead>
+          <tbody>
+            {% for e in events %}
+            <tr><td>{{ e.order }}</td><td>{{ e.source_name }} → {{ e.target_name }}</td><td class="num">{{ e.base_probability }}%</td><td class="num">{{ e.effective_probability }}%</td><td>{{ e.outcome|outcome_label }}</td></tr>
+            {% empty %}<tr><td colspan="5" class="text-muted">No propagation rules from the entry stage.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="recommendations" aria-labelledby="rec-h">
+      <h2 id="rec-h">5. Recommendations</h2>
+      {% for rec in result.recommendations %}
+      <h3>{{ forloop.counter }}. {{ rec.name }} <span class="cg-badge risk-low ms-1">−{{ rec.risk_reduction }}</span></h3>
+      <p class="mb-1">{{ rec.reason }}</p>
+      <p class="small text-muted">{{ rec.category|title }} · {{ rec.effort|title }} effort · {{ rec.priority|title }} priority</p>
+      {% empty %}
+      <p>No catalog control would further reduce the modeled risk for this configuration.</p>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <section id="method" aria-labelledby="mth-h">
+      <h2 id="mth-h">{% if run.status == 'completed' %}6{% else %}2{% endif %}. Inputs and limitations</h2>
+      <dl class="cg-ledger">
+        <dt>Base likelihood</dt><dd>{{ run.likelihood }}%</dd>
+        <dt>Severity / impact</dt><dd>{{ run.severity }} / {{ run.impact }}</dd>
+        <dt>Threshold</dt><dd>{{ run.threshold }}%</dd>
+        <dt>Enabled controls</dt><dd>{% for c in enabled_controls %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% empty %}None{% endfor %}</dd>
+        <dt>Model version</dt><dd>{{ result.model_version|default:"—" }}</dd>
+      </dl>
+      <h3>Limitations</h3>
+      <ul class="small">{% for item in limitations %}<li>{{ item }}</li>{% endfor %}</ul>
+      <p class="small text-muted">CodeGuard is a risk model. Scenarios are hypothetical, control effectiveness values are illustrative, and modeled improvements do not guarantee equivalent protection in a real organization.</p>
+    </section>
+  </article>
+</div>
+{% endblock %}
