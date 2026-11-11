@@ -1,0 +1,123 @@
+
+{% extends "layouts/app.html" %}
+
+{% block title %}{{ finding.rule_id }} · Code Remediation{% endblock %}
+
+{% block breadcrumbs %}
+<li><a href="{% url 'remediation:plan' %}">Remediation</a></li>
+<li aria-current="page">Code finding</li>
+{% endblock %}
+
+{% block content %}
+<div class="cg-page-head">
+  <div>
+    <div class="cg-tags mb-3">
+      {% include "components/status.html" with status=item.status label=item.get_status_display %}
+      <span class="tag">{{ finding.get_severity_display }}</span>
+    </div>
+    <h1>Code finding remediation</h1>
+    <p class="lede">
+      Track the corrective action for {{ finding.rule_id }}.
+    </p>
+  </div>
+</div>
+
+<div class="cg-split">
+  <div>
+    <section class="cg-section" aria-labelledby="finding-h">
+      <div class="cg-section-head">
+        <h2 id="finding-h">Finding details</h2>
+      </div>
+      <div>
+        <dl class="cg-ledger">
+          <dt>Project</dt>
+          <dd>{{ finding.scan.project_name }}</dd>
+
+          <dt>CodeQL rule</dt>
+          <dd>{{ finding.rule_id }}</dd>
+
+          <dt>Rule name</dt>
+          <dd>{{ finding.rule_name|default:"Not available" }}</dd>
+
+          <dt>Severity</dt>
+          <dd>{{ finding.get_severity_display }}</dd>
+
+          <dt>File</dt>
+          <dd>{{ finding.file_path|default:"Unknown file" }}</dd>
+
+          <dt>Line</dt>
+          <dd>{{ finding.start_line|default:"Not available" }}</dd>
+
+          <dt>Description</dt>
+          <dd>{{ finding.message }}</dd>
+
+          <dt>Scan</dt>
+          <dd>
+            <a href="{% url 'code_scans:detail' finding.scan_id %}">
+              View scan results
+            </a>
+          </dd>
+        </dl>
+
+        {% if finding.help_uri %}
+        <p class="mt-3 mb-0">
+          <a href="{{ finding.help_uri }}" target="_blank" rel="noopener noreferrer">
+            Read CodeQL rule documentation
+          </a>
+        </p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="cg-section mt-4" aria-labelledby="recommendation-h">
+      <div class="cg-section-head">
+        <h2 id="recommendation-h">Recommended remediation</h2>
+      </div>
+      <div>
+        <p>{{ item.recommendation|linebreaksbr }}</p>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section class="cg-panel" aria-labelledby="update-h">
+      <div class="cg-panel-head">
+        <h2 id="update-h">Status and notes</h2>
+      </div>
+
+      <div class="cg-panel-body">
+        <p class="small text-muted">
+          Added {{ item.created_at|date:"Y-m-d" }}.
+          {% if item.closed_at %}
+            Closed {{ item.closed_at|date:"Y-m-d" }}.
+          {% endif %}
+        </p>
+
+        {% if can_edit %}
+        <form method="post" novalidate data-loading>
+          {% csrf_token %}
+          {% for field in form %}
+            {% include "components/field.html" %}
+          {% endfor %}
+          <button class="btn btn-primary" type="submit">
+            <span class="btn-label">Save changes</span>
+            <span class="btn-loading">Saving…</span>
+          </button>
+        </form>
+        {% else %}
+        <dl class="cg-ledger">
+          <dt>Due</dt>
+          <dd>{{ item.due_date|date:"Y-m-d"|default:"—" }}</dd>
+
+          <dt>Notes</dt>
+          <dd class="mb-0">{{ item.note|default:"—"|linebreaksbr }}</dd>
+        </dl>
+        <p class="small text-muted mt-3 mb-0">
+          Your role allows you to view this item but not update it.
+        </p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

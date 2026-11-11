@@ -52,27 +52,58 @@ def _stage_exposure(runs):
 
 
 def supply_chain_map(user):
-    """Stages with their assets, controls, entry scenarios, configured
-    propagation paths across visible scenarios, and run exposure."""
-    scenarios = visible_scenarios(user).filter(status=ScenarioStatus.ACTIVE)
-    stages = list(SupplyChainStage.objects.prefetch_related("controls"))
-    entry_counts = dict(scenarios.values_list("initial_stage__key").annotate(n=Count("id")).order_by())
-    runs = accessible_runs(user).filter(status=RunStatus.COMPLETED)
+    """Supply-chain stages, controls, propagation paths, and run exposure."""
+    graph_type = SupplyChainStage.GraphType.SUPPLY_CHAIN
+
+    scenarios = visible_scenarios(user).filter(
+        status=ScenarioStatus.ACTIVE,
+        initial_stage__graph_type=graph_type,
+    )
+    stages = list(
+        SupplyChainStage.objects.filter(graph_type=graph_type)
+        .prefetch_related("controls")
+        .order_by("position")
+    )
+
+    entry_counts = dict(
+        scenarios.values_list("initial_stage__key")
+        .annotate(n=Count("id"))
+        .order_by()
+    )
+
+    runs = accessible_runs(user).filter(
+        status=RunStatus.COMPLETED,
+        scenario__initial_stage__graph_type=graph_type,
+    )
     exposure = _stage_exposure(runs)
 
     edges = (
         PropagationRule.objects.filter(scenario__in=scenarios)
-        .values("source__key", "source__name", "source__position", "target__key", "target__name", "target__position")
-        .annotate(scenarios=Count("scenario", distinct=True), average=Avg("probability"))
+        .values(
+            "source__key",
+            "source__name",
+            "source__position",
+            "target__key",
+            "target__name",
+            "target__position",
+        )
+        .annotate(
+            scenarios=Count("scenario", distinct=True),
+            average=Avg("probability"),
+        )
         .order_by("source__position", "target__position")
     )
+
     edge_list = [
         {
             "source": e["source__key"],
             "target": e["target__key"],
             "source_name": e["source__name"],
             "target_name": e["target__name"],
-            "kind": _edge_kind(e["source__position"], e["target__position"]),
+            "kind": _edge_kind(
+                e["source__position"],
+                e["target__position"],
+            ),
             "scenarios": e["scenarios"],
             "average": round(e["average"], 1),
         }
@@ -95,27 +126,49 @@ def supply_chain_map(user):
                 "average_residual": _rounded(stats.get("average_residual")),
             }
         )
+
     pipeline = build_pipeline(
-        [{"key": s.key, "name": s.name, "position": s.position, "state": "rule"} for s in stages],
         [
-            {"source": e["source"], "target": e["target"], "status": "rule", "label": f"{e['average']:g}%"}
+            {
+                "key": s.key,
+                "name": s.name,
+                "position": s.position,
+                "state": "rule",
+            }
+            for s in stages
+        ],
+        [
+            {
+                "source": e["source"],
+                "target": e["target"],
+                "status": "rule",
+                "label": f"{e['average']:g}%",
+            }
             for e in edge_list
         ],
     )
+
     return {
         "stages": out,
         "pipeline": pipeline,
         "edges": edge_list,
         "scenario_count": scenarios.count(),
         "run_count": runs.count(),
-        "control_count": SecurityControl.objects.count(),
+        "control_count": SecurityControl.objects.filter(
+            stages__graph_type=graph_type
+        ).distinct().count(),
         "asset_count": sum(len(s["assets"]) for s in out),
     }
 
-
 def stage_profile(user, stage):
-    scenarios = visible_scenarios(user).filter(status=ScenarioStatus.ACTIVE)
-    runs = accessible_runs(user).filter(status=RunStatus.COMPLETED)
+    scenarios = visible_scenarios(user).filter(
+        status=ScenarioStatus.ACTIVE,
+        initial_stage__graph_type=stage.graph_type,
+    )
+    runs = accessible_runs(user).filter(
+        status=RunStatus.COMPLETED,
+        scenario__initial_stage__graph_type=stage.graph_type,
+    )
     stats = _stage_exposure(runs).get(stage.key, {})
     results = (
         SimulationStageResult.objects.filter(run__in=runs, stage_key=stage.key)

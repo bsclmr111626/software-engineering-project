@@ -8,6 +8,8 @@ from remediation import services
 from remediation.models import RemediationItem, RemediationStatus
 from simulation.services import run_simulation
 from threats.models import SecurityControl, ThreatScenario
+from code_scans.models import CodeFinding, CodeScan
+from remediation.models import CodeFindingRemediation
 
 pytestmark = pytest.mark.django_db
 
@@ -33,6 +35,25 @@ def top_recommendation(run):
 
 def track(client, run, control):
     return client.post(reverse("remediation:track"), {"run": str(run.pk), "control": control})
+
+def create_code_finding(user):
+    scan = CodeScan.objects.create(
+        owner=user,
+        project_name="CodeGuard test project",
+        uploaded_filename="source.zip",
+        languages=["python"],
+        status=CodeScan.Status.COMPLETED,
+    )
+
+    return CodeFinding.objects.create(
+        scan=scan,
+        rule_id="py/command-line-injection",
+        rule_name="Command-line injection",
+        message="User-controlled input reaches a command execution function.",
+        severity=CodeFinding.Severity.CRITICAL,
+        file_path="app.py",
+        start_line=9,
+    )
 
 
 def test_report_offers_add_to_plan_and_tracking_creates_an_audited_item(seeded, analyst, analyst_client):
@@ -169,3 +190,123 @@ def test_plan_filters_by_status(seeded, analyst, analyst_client):
     assert [i.pk for i in done] == [second.pk]
     everything = analyst_client.get(reverse("remediation:plan"), {"status": "bogus"})
     assert everything.status_code == 200  # unknown filter falls back to the default
+
+
+def test_code_finding_tracking_creates_one_audited_remediation(seeded, analyst):
+    finding = create_code_finding(analyst)
+
+    item, created = services.track_code_finding(analyst, finding)
+
+    assert created is True
+    assert item.finding == finding
+    assert item.status == RemediationStatus.OPEN
+    assert item.recommendation
+    assert CodeFindingRemediation.objects.filter(finding=finding).count() == 1
+
+    assert AuditEvent.objects.filter(
+        action=AuditAction.REMEDIATION_CREATE,
+        object_id=str(item.pk),
+    ).exists()
+
+
+def test_code_finding_tracking_twice_does_not_duplicate(seeded, analyst):
+    finding = create_code_finding(analyst)
+
+    first, created_first = services.track_code_finding(analyst, finding)
+    second, created_second = services.track_code_finding(analyst, finding)
+
+    assert created_first is True
+    assert created_second is False
+    assert first.pk == second.pk
+    assert CodeFindingRemediation.objects.filter(finding=finding).count() == 1
+
+
+def test_code_remediation_update_saves_status_note_and_due_date(
+    seeded, analyst, analyst_client
+):
+    finding = create_code_finding(analyst)
+    item, _ = services.track_code_finding(analyst, finding)
+
+    url = reverse("remediation:code_detail", args=[item.pk])
+
+    response = analyst_client.post(
+        url,
+        {
+            "status": "in_progress",
+            "due_date": "2026-12-01",
+            "note": "Corrective action scheduled.",
+        },
+    )
+
+    assert response.status_code == 302
+
+    item.refresh_from_db()
+
+    assert item.status == RemediationStatus.IN_PROGRESS
+    assert str(item.due_date) == "2026-12-01"
+    assert item.note == "Corrective action scheduled."
+    assert item.closed_at is None
+
+    response = analyst_client.post(
+        url,
+        {
+            "status": "done",
+            "due_date": "2026-12-01",
+            "note": "Review completed.",
+        },
+    )
+
+    assert response.status_code == 302
+
+    item.refresh_from_db()
+
+    assert item.status == RemediationStatus.DONE
+    assert item.closed_at is not None
+
+    changes = AuditEvent.objects.filter(
+        action=AuditAction.REMEDIATION_UPDATE,
+        object_id=str(item.pk),
+    )
+
+    assert changes.count() == 2
+
+
+def test_code_remediation_is_private_to_scan_owner(
+    seeded, analyst, other_analyst, admin_user
+):
+    finding = create_code_finding(analyst)
+    item, _ = services.track_code_finding(analyst, finding)
+
+    for user in (other_analyst, admin_user):
+        client = Client()
+        client.force_login(user)
+
+        assert client.get(
+            reverse("remediation:code_detail", args=[item.pk])
+        ).status_code == 404
+
+        assert client.post(
+            reverse("remediation:code_detail", args=[item.pk]),
+            {"status": "done", "note": "Unauthorized"},
+        ).status_code == 404
+
+
+def test_code_remediation_appears_on_main_plan(
+    seeded, analyst, analyst_client
+):
+    finding = create_code_finding(analyst)
+    item, _ = services.track_code_finding(analyst, finding)
+
+    response = analyst_client.get(reverse("remediation:plan"))
+
+    assert response.status_code == 200
+    assert item.pk in [code_item.pk for code_item in response.context["code_page"]]
+
+    page = response.content.decode()
+
+    assert "Code Finding Remediation" in page
+    assert "CodeGuard test project" in page
+    assert "py/command-line-injection" in page
+    assert "Critical" in page
+    assert item.status == RemediationStatus.OPEN
+    assert item.get_status_display() == "Open"

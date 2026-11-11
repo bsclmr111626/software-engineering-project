@@ -90,9 +90,9 @@
 </section>
 
 <section class="cg-section" aria-labelledby="pipe-h">
-  <div class="cg-section-head"><div><h2 id="pipe-h">Supply chain propagation</h2><p>Threshold {{ run.threshold }}% · peak stage risk {{ result.peak_residual_risk }}</p></div><a class="cg-more-link" href="{% url 'simulation:detail_section' run.id 'paths' %}">Every path evaluated <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+  <div class="cg-section-head"><div><h2 id="pipe-h">{{ propagation_heading }}</h2><p>Threshold {{ run.threshold }}% · peak stage risk {{ result.peak_residual_risk }}</p></div><a class="cg-more-link" href="{% url 'simulation:detail_section' run.id 'paths' %}">Every path evaluated <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
   <div class="cg-pipeline-frame">
-    {% include "components/pipeline.html" with svg_id="run-graph" svg_title="Simulated propagation through the five supply chain stages" %}
+    {% include "components/pipeline.html" with svg_id="run-graph" svg_title=pipeline_title %}
     <div class="mt-3">{% include "components/legend.html" %}</div>
   </div>
 </section>

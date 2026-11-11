@@ -16,6 +16,7 @@ from django.utils import timezone
 from audit.models import AuditAction
 from audit.services import record_event
 from threats.models import SecurityControl, SupplyChainStage
+from code_scans.services.simulation_mapping import scenario_slug_for_finding
 
 from . import engine
 from . import propagation as prop
@@ -26,9 +27,9 @@ from .serialization import input_to_dict, result_to_dict
 
 logger = logging.getLogger("codeguard.simulation")
 
-# 2: adds "control_assumptions" (basis and limitations of each enabled control).
+# 3: records graph_type so historical reports retain their graph identity.
 # Readers must tolerate its absence in version-1 snapshots.
-SNAPSHOT_VERSION = 2
+SNAPSHOT_VERSION = 3
 
 OUTCOME_LABELS = {
     prop.OUTCOME_PROPAGATED: "Propagated",
@@ -51,15 +52,50 @@ def control_to_domain(control):
 
 
 def build_input(scenario, *, likelihood, severity, impact, threshold, controls):
-    """Translate a scenario (plus user overrides) into an engine input."""
+    scenario_rules = list(
+        scenario.rules.select_related("source", "target")
+    )
+
+    graph_type = scenario.initial_stage.graph_type
+
+    if graph_type == SupplyChainStage.GraphType.SUPPLY_CHAIN:
+        # Preserve the original five-stage supply-chain simulation.
+        stage_queryset = SupplyChainStage.objects.filter(
+            graph_type=graph_type
+        )
+    else:
+        # Application simulations use only stages on this scenario's path.
+        stage_ids = {scenario.initial_stage_id}
+
+        for rule in scenario_rules:
+            stage_ids.add(rule.source_id)
+            stage_ids.add(rule.target_id)
+
+        stage_queryset = SupplyChainStage.objects.filter(
+            graph_type=graph_type,
+            pk__in=stage_ids,
+        )
+
     stages = tuple(
-        Stage(key=s.key, name=s.name, position=s.position, weight=s.weight)
-        for s in SupplyChainStage.objects.order_by("position")
+        Stage(
+            key=stage.key,
+            name=stage.name,
+            position=stage.position,
+            weight=stage.weight,
+        )
+        for stage in stage_queryset.order_by("position")
     )
+
     edges = tuple(
-        Edge(source=r.source.key, target=r.target.key, probability=float(r.probability), rationale=r.rationale)
-        for r in scenario.rules.select_related("source", "target")
+        Edge(
+            source=rule.source.key,
+            target=rule.target.key,
+            probability=float(rule.probability),
+            rationale=rule.rationale,
+        )
+        for rule in scenario_rules
     )
+
     return SimulationInput(
         stages=stages,
         entry_stage=scenario.initial_stage.key,
@@ -67,10 +103,12 @@ def build_input(scenario, *, likelihood, severity, impact, threshold, controls):
         severity=int(severity),
         impact=int(impact),
         edges=edges,
-        controls=tuple(control_to_domain(c) for c in sorted(controls, key=lambda c: c.slug)),
+        controls=tuple(
+            control_to_domain(control)
+            for control in sorted(controls, key=lambda control: control.slug)
+        ),
         threshold=float(threshold),
     )
-
 
 def input_from_snapshot(snapshot):
     """Rebuild the exact engine input stored with a historical run."""
@@ -97,6 +135,7 @@ def scenario_snapshot(scenario, inp, applicable, controls=()):
             "version": scenario.version,
             "description": scenario.description,
             "initial_stage": scenario.initial_stage.key,
+            "graph_type": scenario.initial_stage.graph_type,
             "visibility": scenario.visibility,
             "is_system": scenario.is_system,
             "assumptions": scenario.assumptions,
@@ -131,18 +170,57 @@ def _event_explanation(evaluation, names):
     return text[:300]
 
 
-def run_simulation(user, scenario, *, likelihood, severity, impact, threshold, controls, request=None):
-    """Execute and persist a simulation. Raises SimulationConfigError for bad input."""
+def run_simulation(
+    user,
+    scenario,
+    *,
+    likelihood,
+    severity,
+    impact,
+    threshold,
+    controls,
+    request=None,
+    code_finding=None,
+):
+    """Execute and persist a simulation, optionally linked to a CodeQL finding."""
     controls = list(controls)
+
+    if code_finding is not None:
+        # A finding must belong to the user launching the simulation.
+        if code_finding.scan.owner_id != user.pk:
+            raise engine.SimulationConfigError(
+                "You cannot simulate a finding from another user's scan."
+            )
+
+        # The selected scenario must match the finding's mapping.
+        expected_slug = scenario_slug_for_finding(code_finding)
+
+        if not expected_slug:
+            raise engine.SimulationConfigError(
+                "This finding has no supported application threat scenario."
+            )
+
+        if scenario.slug != expected_slug:
+            raise engine.SimulationConfigError(
+                "The selected scenario does not match this finding."
+            )
+
     inp = build_input(
-        scenario, likelihood=likelihood, severity=severity, impact=impact, threshold=threshold, controls=controls
+        scenario,
+        likelihood=likelihood,
+        severity=severity,
+        impact=impact,
+        threshold=threshold,
+        controls=controls,
     )
-    engine.validate_input(inp)  # invalid configurations never create a run
+    engine.validate_input(inp)
+
     applicable = set(scenario.controls.values_list("slug", flat=True))
 
     run = SimulationRun.objects.create(
         user=user,
         scenario=scenario,
+        code_finding=code_finding,
         scenario_name=scenario.name,
         scenario_slug=scenario.slug,
         scenario_version=scenario.version,
@@ -154,15 +232,24 @@ def run_simulation(user, scenario, *, likelihood, severity, impact, threshold, c
         enabled_controls=sorted(c.slug for c in controls),
         input_snapshot=scenario_snapshot(scenario, inp, applicable, controls),
     )
+
     try:
         with transaction.atomic():
             _execute(run, inp, applicable)
     except Exception:
         logger.exception("Simulation run %s failed", run.pk)
         run.status = RunStatus.FAILED
-        run.error_message = "The simulation could not be completed. The error has been logged."
+        run.error_message = (
+            "The simulation could not be completed. The error has been logged."
+        )
         run.save(update_fields=["status", "error_message"])
-        record_event(user, AuditAction.SIMULATION_FAILED, target=run, request=request, scenario=scenario.slug)
+        record_event(
+            user,
+            AuditAction.SIMULATION_FAILED,
+            target=run,
+            request=request,
+            scenario=scenario.slug,
+        )
         return run
 
     record_event(
@@ -176,10 +263,22 @@ def run_simulation(user, scenario, *, likelihood, severity, impact, threshold, c
     )
     return run
 
-
 def _execute(run, inp, applicable):
     result = engine.simulate(inp)
-    catalog = [control_to_domain(c) for c in SecurityControl.objects.prefetch_related("stages").order_by("slug")]
+    stage_keys = {stage.key for stage in inp.stages}
+
+    catalog = []
+    catalog_controls = SecurityControl.objects.prefetch_related(
+        "stages"
+    ).order_by("slug")
+
+    for control in catalog_controls:
+        control_stage_keys = {
+            stage.key for stage in control.stages.all()
+        }
+
+        if control_stage_keys and control_stage_keys.issubset(stage_keys):
+            catalog.append(control_to_domain(control))
     recommendations = recommend(inp, result, catalog, applicable)
     contributions = control_contributions(inp, result)
     names = {s.key: s.name for s in inp.stages}

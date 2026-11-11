@@ -25,6 +25,14 @@ class SimulationRun(models.Model):
     scenario = models.ForeignKey(
         "threats.ThreatScenario", null=True, blank=True, on_delete=models.SET_NULL, related_name="runs"
     )
+    code_finding = models.ForeignKey(
+        "code_scans.CodeFinding",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="simulation_runs",
+        help_text="Code finding that prompted this simulation, if applicable.",
+    )
     scenario_name = models.CharField(max_length=120)
     scenario_slug = models.SlugField(max_length=80)
     scenario_version = models.PositiveIntegerField()

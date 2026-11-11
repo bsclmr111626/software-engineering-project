@@ -1,7 +1,7 @@
-{# Five-stage supply chain diagram. Expects `pipeline` from simulation.visual.build_pipeline #}
+{# Threat propagation diagram. Expects `pipeline` from simulation.visual.build_pipeline #}
 <div class="cg-pipeline-scroll">
 <svg class="cg-pipeline" viewBox="0 0 {{ pipeline.width }} {{ pipeline.height }}" role="img" aria-labelledby="{{ svg_id|default:'pipeline' }}-title" aria-describedby="{{ svg_id|default:'pipeline' }}-desc">
-  <title id="{{ svg_id|default:'pipeline' }}-title">{{ svg_title|default:"Software supply chain diagram" }}</title>
+  <title id="{{ svg_id|default:'pipeline' }}-title">{{ svg_title|default:"Threat propagation diagram" }}</title>
   <desc id="{{ svg_id|default:'pipeline' }}-desc">{% for n in pipeline.nodes %}{{ n.name }}{% if n.state_label %}: {{ n.state_label }}{% endif %}. {% endfor %}{% for e in pipeline.edges %}{{ e.source_name }} to {{ e.target_name }}, {{ e.label }}, {{ e.status_label }}. {% endfor %}</desc>
   <defs>
     <marker id="arrow-propagated" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="marker-propagated" d="M0,0 L10,5 L0,10 z"/></marker>

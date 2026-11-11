@@ -9,8 +9,13 @@ PERCENT = [MinValueValidator(0), MaxValueValidator(100)]
 LEVEL = [MinValueValidator(1), MaxValueValidator(5)]
 
 
+
 class SupplyChainStage(models.Model):
-    """One of the five ordered stages of the software supply chain."""
+    """A stage in a supported threat simulation graph."""
+
+    class GraphType(models.TextChoices):
+        SUPPLY_CHAIN = "supply_chain", "Software Supply Chain"
+        APPLICATION = "application", "Application Security"
 
     key = models.SlugField(max_length=32, unique=True)
     name = models.CharField(max_length=80)
@@ -19,12 +24,25 @@ class SupplyChainStage(models.Model):
     assets = models.TextField(help_text="Typical assets that live at this stage.")
     icon = models.CharField(max_length=40, help_text="Bootstrap Icons name, e.g. 'laptop'.")
     weight = models.PositiveSmallIntegerField(
-        default=1, validators=LEVEL, help_text="Criticality weight used to aggregate overall risk."
+        default=1,
+        validators=LEVEL,
+        help_text="Criticality weight used to aggregate overall risk.",
+    )
+    graph_type = models.CharField(
+        max_length=16,
+        choices=GraphType.choices,
+        default=GraphType.SUPPLY_CHAIN,
+        db_index=True,
     )
 
     class Meta:
         ordering = ["position"]
-        constraints = [models.CheckConstraint(condition=Q(weight__gte=1, weight__lte=5), name="stage_weight_range")]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(weight__gte=1, weight__lte=5),
+                name="stage_weight_range",
+            )
+        ]
 
     def __str__(self):
         return self.name

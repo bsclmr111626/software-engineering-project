@@ -35,7 +35,7 @@ def test_dashboard_empty_state(seeded, analyst_client):
     metrics = response.context["metrics"]
     assert metrics["run_total"] == 0
     assert metrics["average_residual"] is None
-    assert metrics["scenario_count"] == 6
+    assert metrics["scenario_count"] == 10
     assert b"No simulation history yet" in response.content
 
 

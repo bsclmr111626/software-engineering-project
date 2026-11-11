@@ -7,6 +7,7 @@ app_name = "simulation"
 urlpatterns = [
     path("", views.hub, name="hub"),
     path("new/", views.configure, name="configure"),
+    path("from-finding/<uuid:finding_id>/", views.configure_from_finding, name="from_finding"),
     path("results/", views.results, name="results"),
     path("compare/", views.compare, name="compare"),
     path("compare/chart.png", views.compare_chart, name="compare_chart"),

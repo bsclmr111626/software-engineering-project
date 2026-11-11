@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -14,6 +14,8 @@ from audit.services import record_event
 from remediation.services import tracked_controls
 from threats.models import ScenarioStatus, SecurityControl, SupplyChainStage
 from threats.services import visible_scenarios
+from code_scans.models import CodeFinding
+from code_scans.services.simulation_mapping import scenario_slug_for_finding
 
 from . import charts, services
 from .engine import LIMITATIONS, STATE_LABELS, SimulationConfigError
@@ -109,10 +111,52 @@ def results(request):
 
 @analyst_required
 def configure(request):
+    """Configure a normal threat simulation."""
+    return _configure(request)
+
+
+@analyst_required
+def configure_from_finding(request, finding_id):
+    """Configure a simulation using the scenario mapped to a CodeQL finding."""
+    finding = get_object_or_404(
+        CodeFinding.objects.select_related("scan"),
+        pk=finding_id,
+        scan__owner=request.user,
+    )
+
+    scenario_slug = scenario_slug_for_finding(finding)
+
+    if not scenario_slug:
+        messages.warning(
+            request,
+            "No application threat scenario is currently mapped to this finding.",
+        )
+        raise Http404("No simulation scenario is mapped to this finding.")
+
+    return _configure(request, code_finding=finding)
+
+@analyst_required
+def _configure(request, code_finding=None):
     scenarios = visible_scenarios(request.user)
+
     initial, selected_scenario = {}, None
 
-    rerun_id = request.GET.get("rerun")
+    if code_finding is not None:
+        # Only the mapped scenario is available for this finding.
+        scenario_slug = scenario_slug_for_finding(code_finding)
+
+        scenarios = scenarios.filter(
+            slug=scenario_slug,
+            status=ScenarioStatus.ACTIVE,
+        )
+
+        if not scenarios.exists():
+            raise Http404("The mapped application threat scenario is unavailable.")
+
+        initial["scenario"] = scenario_slug
+
+    rerun_id = request.GET.get("rerun") if code_finding is None else None
+
     if rerun_id:
         source = services.get_accessible_run(request.user, rerun_id)
         initial = {
@@ -121,11 +165,20 @@ def configure(request):
             "severity": source.severity,
             "impact": source.impact,
             "threshold": source.threshold,
-            "controls": SecurityControl.objects.filter(slug__in=source.enabled_controls),
+            "controls": SecurityControl.objects.filter(
+                slug__in=source.enabled_controls
+            ),
         }
-    slug = request.POST.get("scenario") or request.GET.get("scenario") or initial.get("scenario")
+
+    slug = (
+        request.POST.get("scenario")
+        or request.GET.get("scenario")
+        or initial.get("scenario")
+    )
+
     if slug:
         selected_scenario = scenarios.filter(slug=slug).first()
+
     if selected_scenario and not rerun_id:
         initial = {
             "scenario": selected_scenario.slug,
@@ -134,12 +187,22 @@ def configure(request):
             "impact": selected_scenario.impact,
             "threshold": selected_scenario.propagation_threshold,
         }
-    if rerun_id and selected_scenario is None:
-        messages.warning(request, "The original scenario is no longer available, so this run cannot be repeated.")
 
-    form = SimulationForm(request.POST or None, initial=initial, scenarios=scenarios)
+    if rerun_id and selected_scenario is None:
+        messages.warning(
+            request,
+            "The original scenario is no longer available, so this run cannot be repeated.",
+        )
+
+    form = SimulationForm(
+        request.POST or None,
+        initial=initial,
+        scenarios=scenarios,
+    )
+
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
+
         try:
             run = services.run_simulation(
                 request.user,
@@ -150,23 +213,45 @@ def configure(request):
                 threshold=data["threshold"],
                 controls=data["controls"],
                 request=request,
+                code_finding=code_finding,
             )
         except SimulationConfigError as exc:
-            form.add_error(None, f"The scenario configuration is invalid: {exc}")
+            form.add_error(
+                None,
+                f"The scenario configuration is invalid: {exc}",
+            )
         else:
             if run.status == RunStatus.COMPLETED:
-                if preferences_for(request.user).share_reports_by_default:
+                # Do not automatically share simulations associated with
+                # private source-code findings.
+                if (
+                    code_finding is None
+                    and preferences_for(request.user).share_reports_by_default
+                ):
                     run.is_shared = True
                     run.save(update_fields=["is_shared"])
-                    record_event(request.user, AuditAction.REPORT_SHARE, target=run, request=request, shared=True)
+
+                    record_event(
+                        request.user,
+                        AuditAction.REPORT_SHARE,
+                        target=run,
+                        request=request,
+                        shared=True,
+                    )
+
                 messages.success(request, "Simulation completed.")
             else:
                 messages.error(request, run.error_message)
+
             return redirect("simulation:detail", run_id=run.id)
 
     applicable = set()
+
     if selected_scenario:
-        applicable = set(selected_scenario.controls.values_list("slug", flat=True))
+        applicable = set(
+            selected_scenario.controls.values_list("slug", flat=True)
+        )
+
     return render(
         request,
         "simulation/configure.html",
@@ -174,29 +259,69 @@ def configure(request):
             "form": form,
             "scenario": selected_scenario,
             "applicable": applicable,
-            "controls": SecurityControl.objects.prefetch_related("stages").order_by("category", "name"),
-            "pipeline": _scenario_preview(selected_scenario) if selected_scenario else None,
+            "controls": SecurityControl.objects.prefetch_related(
+                "stages"
+            ).order_by("category", "name"),
+            "pipeline": (
+                _scenario_preview(selected_scenario)
+                if selected_scenario
+                else None
+            ),
             "categories": CONTROL_GROUPS,
+            "code_finding": code_finding,
         },
     )
 
-
 def _scenario_preview(scenario):
+    rules = list(
+        scenario.rules.select_related("source", "target")
+    )
+
+    graph_type = scenario.initial_stage.graph_type
+
+    if graph_type == SupplyChainStage.GraphType.SUPPLY_CHAIN:
+        # Preserve the complete five-stage supply-chain preview.
+        stage_queryset = SupplyChainStage.objects.filter(
+            graph_type=graph_type
+        )
+    else:
+        # Application previews contain only stages on this scenario's path.
+        stage_ids = {scenario.initial_stage_id}
+
+        for rule in rules:
+            stage_ids.add(rule.source_id)
+            stage_ids.add(rule.target_id)
+
+        stage_queryset = SupplyChainStage.objects.filter(
+            graph_type=graph_type,
+            pk__in=stage_ids,
+        )
+
     stages = [
         {
-            "key": s.key,
-            "name": s.name,
-            "position": s.position,
-            "state": "entry" if s.pk == scenario.initial_stage_id else "rule",
+            "key": stage.key,
+            "name": stage.name,
+            "position": stage.position,
+            "state": (
+                "entry"
+                if stage.pk == scenario.initial_stage_id
+                else "rule"
+            ),
         }
-        for s in SupplyChainStage.objects.all()
+        for stage in stage_queryset.order_by("position")
     ]
-    edges = [
-        {"source": r.source.key, "target": r.target.key, "status": "rule", "label": f"{r.probability}%"}
-        for r in scenario.rules.select_related("source", "target")
-    ]
-    return build_pipeline(stages, edges)
 
+    edges = [
+        {
+            "source": rule.source.key,
+            "target": rule.target.key,
+            "status": "rule",
+            "label": f"{rule.probability}%",
+        }
+        for rule in rules
+    ]
+
+    return build_pipeline(stages, edges)
 
 def _run_pipeline(run, stage_results, events):
     stages = [
@@ -244,6 +369,36 @@ def _result_context(request, run):
         .exclude(pk=run.pk)
         .first()
     )
+    snapshot_scenario = run.input_snapshot.get("scenario", {})
+    graph_type = snapshot_scenario.get("graph_type")
+
+    # Support older snapshots that do not contain graph_type.
+    if not graph_type and run.scenario_id:
+        graph_type = run.scenario.initial_stage.graph_type
+
+    # A code finding is linked to an application-security simulation.
+    if not graph_type:
+        graph_type = (
+            SupplyChainStage.GraphType.APPLICATION
+            if run.code_finding_id
+            else SupplyChainStage.GraphType.SUPPLY_CHAIN
+        )
+
+    is_application = (
+        graph_type == SupplyChainStage.GraphType.APPLICATION
+    )
+
+    propagation_heading = (
+        "Application threat propagation"
+        if is_application
+        else "Supply chain propagation"
+    )
+
+    pipeline_title = (
+        "Simulated propagation through the application execution path"
+        if is_application
+        else "Simulated propagation through the five supply chain stages"
+    )
     return {
         "run": run,
         "is_owner": run.user_id == request.user.pk,
@@ -259,6 +414,9 @@ def _result_context(request, run):
         "scenario_changed": run.scenario is not None and run.scenario.version != run.scenario_version,
         "tracked": tracked_controls(request.user, run.scenario_slug),
         "affected_assets": _affected_assets(run, stage_results),
+        "graph_type": graph_type,
+        "propagation_heading": propagation_heading,
+        "pipeline_title": pipeline_title,
     }
 
 

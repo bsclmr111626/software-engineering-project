@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "simulation",
     "remediation",
     "core",
+    "code_scans",
 ]
 
 MIDDLEWARE = [
@@ -219,3 +220,17 @@ LOGGING = {
         },
     },
 }
+
+# CodeQL source code scanning
+
+CODEQL_EXECUTABLE = os.environ.get(
+    "CODEQL_EXECUTABLE",
+    r"C:\CodeQL\codeql-win64\codeql\codeql.exe",
+)
+
+CODEQL_TIMEOUT_SECONDS = 900
+
+# Upload and extraction limits
+CODE_SCAN_MAX_UPLOAD_SIZE = 25 * 1024 * 1024
+CODE_SCAN_MAX_EXTRACTED_SIZE = 100 * 1024 * 1024
+CODE_SCAN_MAX_FILES = 5000
