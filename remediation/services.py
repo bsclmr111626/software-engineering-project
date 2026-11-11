@@ -9,10 +9,8 @@ from audit.models import AuditAction
 from audit.services import record_event
 from simulation.models import RunStatus, SimulationRun
 from threats.models import SecurityControl
-from code_scans.models import CodeFinding
-from .models import CodeFindingRemediation
 
-from .models import ACTIVE_STATUSES, CLOSED_STATUSES, RemediationItem
+from .models import ACTIVE_STATUSES, CLOSED_STATUSES, CodeFindingRemediation, RemediationItem
 
 
 class RemediationError(ValueError):
@@ -177,11 +175,7 @@ def recommendation_for(finding):
 
 def code_items_for(user):
     """Return code remediation items belonging to the user's scans."""
-    return (
-        CodeFindingRemediation.objects
-        .filter(finding__scan__owner=user)
-        .select_related("finding", "finding__scan")
-    )
+    return CodeFindingRemediation.objects.filter(finding__scan__owner=user).select_related("finding", "finding__scan")
 
 
 def get_code_item(user, pk):
@@ -234,8 +228,7 @@ def update_code_item(user, item, *, status, note, due_date, request=None):
     """Update a code finding's remediation status and notes."""
 
     old_status = (
-        CodeFindingRemediation.objects
-        .select_for_update()
+        CodeFindingRemediation.objects.select_for_update()
         .values_list("status", flat=True)
         .get(
             pk=item.pk,

@@ -79,9 +79,7 @@ class CodeFindingRemediation(models.Model):
         db_index=True,
     )
 
-    recommendation = models.TextField(
-        help_text="Technical guidance for addressing the source-code finding."
-    )
+    recommendation = models.TextField(help_text="Technical guidance for addressing the source-code finding.")
 
     note = models.TextField(blank=True, max_length=2000)
 
@@ -98,12 +96,8 @@ class CodeFindingRemediation(models.Model):
         ]
 
     def __str__(self):
-        return (
-            f"Remediation for {self.finding.rule_id} "
-            f"({self.get_status_display()})"
-        )
+        return f"Remediation for {self.finding.rule_id} ({self.get_status_display()})"
 
     @property
     def is_active(self):
         return self.status in ACTIVE_STATUSES
-

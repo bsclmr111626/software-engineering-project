@@ -52,7 +52,7 @@ def scenario_payload(rules=(("vcs", "cicd", 70),), existing=0, **overrides):
 
 class TestSeedCommand:
     def test_seed_creates_reference_data(self, seeded):
-        
+
         supply_chain_stages = SupplyChainStage.objects.filter(
             graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN
         ).order_by("position")
@@ -63,7 +63,11 @@ class TestSeedCommand:
 
         assert supply_chain_stages.count() == 5
         assert list(supply_chain_stages.values_list("key", flat=True)) == [
-            "ide", "vcs", "cicd", "registry", "production",
+            "ide",
+            "vcs",
+            "cicd",
+            "registry",
+            "production",
         ]
 
         assert application_stages.count() == 6
@@ -84,17 +88,13 @@ class TestSeedCommand:
             visibility=Visibility.SHARED,
         )
         assert system_scenarios.count() == 10
-        assert system_scenarios.filter(
-            initial_stage__graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN
-        ).count() == 6
-        assert system_scenarios.filter(
-            initial_stage__graph_type=SupplyChainStage.GraphType.APPLICATION
-        ).count() == 4
+        assert system_scenarios.filter(initial_stage__graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN).count() == 6
+        assert system_scenarios.filter(initial_stage__graph_type=SupplyChainStage.GraphType.APPLICATION).count() == 4
 
         for scenario in ThreatScenario.objects.all():
             assert scenario.rules.exists()
             assert scenario.controls.exists()
-        
+
     def test_seed_is_idempotent(self, seeded):
         counts = (ThreatScenario.objects.count(), PropagationRule.objects.count(), SecurityControl.objects.count())
         call_command("seed_codeguard", verbosity=0)

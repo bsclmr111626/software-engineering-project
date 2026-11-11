@@ -4,12 +4,11 @@ from django.test import Client
 from django.urls import reverse
 
 from audit.models import AuditAction, AuditEvent
+from code_scans.models import CodeFinding, CodeScan
 from remediation import services
-from remediation.models import RemediationItem, RemediationStatus
+from remediation.models import CodeFindingRemediation, RemediationItem, RemediationStatus
 from simulation.services import run_simulation
 from threats.models import SecurityControl, ThreatScenario
-from code_scans.models import CodeFinding, CodeScan
-from remediation.models import CodeFindingRemediation
 
 pytestmark = pytest.mark.django_db
 
@@ -35,6 +34,7 @@ def top_recommendation(run):
 
 def track(client, run, control):
     return client.post(reverse("remediation:track"), {"run": str(run.pk), "control": control})
+
 
 def create_code_finding(user):
     scan = CodeScan.objects.create(
@@ -221,9 +221,7 @@ def test_code_finding_tracking_twice_does_not_duplicate(seeded, analyst):
     assert CodeFindingRemediation.objects.filter(finding=finding).count() == 1
 
 
-def test_code_remediation_update_saves_status_note_and_due_date(
-    seeded, analyst, analyst_client
-):
+def test_code_remediation_update_saves_status_note_and_due_date(seeded, analyst, analyst_client):
     finding = create_code_finding(analyst)
     item, _ = services.track_code_finding(analyst, finding)
 
@@ -271,9 +269,7 @@ def test_code_remediation_update_saves_status_note_and_due_date(
     assert changes.count() == 2
 
 
-def test_code_remediation_is_private_to_scan_owner(
-    seeded, analyst, other_analyst, admin_user
-):
+def test_code_remediation_is_private_to_scan_owner(seeded, analyst, other_analyst, admin_user):
     finding = create_code_finding(analyst)
     item, _ = services.track_code_finding(analyst, finding)
 
@@ -281,19 +277,18 @@ def test_code_remediation_is_private_to_scan_owner(
         client = Client()
         client.force_login(user)
 
-        assert client.get(
-            reverse("remediation:code_detail", args=[item.pk])
-        ).status_code == 404
+        assert client.get(reverse("remediation:code_detail", args=[item.pk])).status_code == 404
 
-        assert client.post(
-            reverse("remediation:code_detail", args=[item.pk]),
-            {"status": "done", "note": "Unauthorized"},
-        ).status_code == 404
+        assert (
+            client.post(
+                reverse("remediation:code_detail", args=[item.pk]),
+                {"status": "done", "note": "Unauthorized"},
+            ).status_code
+            == 404
+        )
 
 
-def test_code_remediation_appears_on_main_plan(
-    seeded, analyst, analyst_client
-):
+def test_code_remediation_appears_on_main_plan(seeded, analyst, analyst_client):
     finding = create_code_finding(analyst)
     item, _ = services.track_code_finding(analyst, finding)
 

@@ -50,9 +50,9 @@ def landing(request):
         request,
         "core/landing.html",
         {
-            "stages": SupplyChainStage.objects.filter(
-                graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN
-            ).order_by("position"),
+            "stages": SupplyChainStage.objects.filter(graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN).order_by(
+                "position"
+            ),
             "scenario_total": ThreatScenario.objects.filter(is_system=True).count(),
             "control_total": SecurityControl.objects.count(),
             "bands": RISK_BANDS,
@@ -98,9 +98,7 @@ def stage_detail(request, key):
         graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN,
     )
     stages = list(
-        SupplyChainStage.objects.filter(
-            graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN
-        ).order_by("position")
+        SupplyChainStage.objects.filter(graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN).order_by("position")
     )
     index = stages.index(stage)
 
@@ -115,6 +113,7 @@ def stage_detail(request, key):
             "profile": analytics.stage_profile(request.user, stage),
         },
     )
+
 
 RISK_SCOPES = {"all": "All visible runs", "mine": "My runs"}
 
@@ -163,9 +162,9 @@ def methodology(request):
         "core/help.html",
         {
             "layout": "layouts/app.html" if request.user.is_authenticated else "layouts/public.html",
-            "stages": SupplyChainStage.objects.filter(
-                graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN
-            ).prefetch_related("controls").order_by("position"),
+            "stages": SupplyChainStage.objects.filter(graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN)
+            .prefetch_related("controls")
+            .order_by("position"),
             "controls": SecurityControl.objects.order_by("category", "name"),
             "limitations": LIMITATIONS,
             "bands": RISK_BANDS,

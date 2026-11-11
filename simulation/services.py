@@ -15,8 +15,8 @@ from django.utils import timezone
 
 from audit.models import AuditAction
 from audit.services import record_event
-from threats.models import SecurityControl, SupplyChainStage
 from code_scans.services.simulation_mapping import scenario_slug_for_finding
+from threats.models import SecurityControl, SupplyChainStage
 
 from . import engine
 from . import propagation as prop
@@ -52,17 +52,13 @@ def control_to_domain(control):
 
 
 def build_input(scenario, *, likelihood, severity, impact, threshold, controls):
-    scenario_rules = list(
-        scenario.rules.select_related("source", "target")
-    )
+    scenario_rules = list(scenario.rules.select_related("source", "target"))
 
     graph_type = scenario.initial_stage.graph_type
 
     if graph_type == SupplyChainStage.GraphType.SUPPLY_CHAIN:
         # Preserve the original five-stage supply-chain simulation.
-        stage_queryset = SupplyChainStage.objects.filter(
-            graph_type=graph_type
-        )
+        stage_queryset = SupplyChainStage.objects.filter(graph_type=graph_type)
     else:
         # Application simulations use only stages on this scenario's path.
         stage_ids = {scenario.initial_stage_id}
@@ -103,12 +99,10 @@ def build_input(scenario, *, likelihood, severity, impact, threshold, controls):
         severity=int(severity),
         impact=int(impact),
         edges=edges,
-        controls=tuple(
-            control_to_domain(control)
-            for control in sorted(controls, key=lambda control: control.slug)
-        ),
+        controls=tuple(control_to_domain(control) for control in sorted(controls, key=lambda control: control.slug)),
         threshold=float(threshold),
     )
+
 
 def input_from_snapshot(snapshot):
     """Rebuild the exact engine input stored with a historical run."""
@@ -188,22 +182,16 @@ def run_simulation(
     if code_finding is not None:
         # A finding must belong to the user launching the simulation.
         if code_finding.scan.owner_id != user.pk:
-            raise engine.SimulationConfigError(
-                "You cannot simulate a finding from another user's scan."
-            )
+            raise engine.SimulationConfigError("You cannot simulate a finding from another user's scan.")
 
         # The selected scenario must match the finding's mapping.
         expected_slug = scenario_slug_for_finding(code_finding)
 
         if not expected_slug:
-            raise engine.SimulationConfigError(
-                "This finding has no supported application threat scenario."
-            )
+            raise engine.SimulationConfigError("This finding has no supported application threat scenario.")
 
         if scenario.slug != expected_slug:
-            raise engine.SimulationConfigError(
-                "The selected scenario does not match this finding."
-            )
+            raise engine.SimulationConfigError("The selected scenario does not match this finding.")
 
     inp = build_input(
         scenario,
@@ -239,9 +227,7 @@ def run_simulation(
     except Exception:
         logger.exception("Simulation run %s failed", run.pk)
         run.status = RunStatus.FAILED
-        run.error_message = (
-            "The simulation could not be completed. The error has been logged."
-        )
+        run.error_message = "The simulation could not be completed. The error has been logged."
         run.save(update_fields=["status", "error_message"])
         record_event(
             user,
@@ -263,19 +249,16 @@ def run_simulation(
     )
     return run
 
+
 def _execute(run, inp, applicable):
     result = engine.simulate(inp)
     stage_keys = {stage.key for stage in inp.stages}
 
     catalog = []
-    catalog_controls = SecurityControl.objects.prefetch_related(
-        "stages"
-    ).order_by("slug")
+    catalog_controls = SecurityControl.objects.prefetch_related("stages").order_by("slug")
 
     for control in catalog_controls:
-        control_stage_keys = {
-            stage.key for stage in control.stages.all()
-        }
+        control_stage_keys = {stage.key for stage in control.stages.all()}
 
         if control_stage_keys and control_stage_keys.issubset(stage_keys):
             catalog.append(control_to_domain(control))

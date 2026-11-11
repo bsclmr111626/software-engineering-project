@@ -1,10 +1,9 @@
-
 import logging
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.shortcuts import get_object_or_404, redirect, render
 from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.permissions import analyst_required
 from audit.models import AuditAction
@@ -16,15 +15,12 @@ from .models import CodeScan
 from .services.scanner import process_code_scan
 from .services.simulation_mapping import scenario_slug_for_finding
 
-
 logger = logging.getLogger(__name__)
 
 
 @analyst_required
 def scan_list(request):
-    scans = CodeScan.objects.filter(
-        owner=request.user
-    ).order_by("-created_at")
+    scans = CodeScan.objects.filter(owner=request.user).order_by("-created_at")
 
     paginator = Paginator(scans, 20)
     page_obj = paginator.get_page(request.GET.get("page"))
@@ -107,8 +103,7 @@ def scan_upload(request):
 
                 messages.error(
                     request,
-                    "The scan could not be completed. "
-                    "Check the scan details or contact an administrator.",
+                    "The scan could not be completed. Check the scan details or contact an administrator.",
                 )
 
             return redirect(
@@ -140,19 +135,14 @@ def scan_detail(request, scan_id):
     findings = scan.findings.all().prefetch_related(
         Prefetch(
             "simulation_runs",
-            queryset=SimulationRun.objects.filter(
-                user=request.user
-            ).order_by("-created_at"),
+            queryset=SimulationRun.objects.filter(user=request.user).order_by("-created_at"),
             to_attr="visible_simulation_runs",
         )
     )
 
     severity = request.GET.get("severity", "").lower()
 
-    valid_severities = {
-        choice[0]
-        for choice in scan.findings.model.Severity.choices
-    }
+    valid_severities = {choice[0] for choice in scan.findings.model.Severity.choices}
 
     if severity in valid_severities:
         findings = findings.filter(severity=severity)

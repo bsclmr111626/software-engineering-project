@@ -25,9 +25,7 @@ from code_scans.services.simulation_mapping import (
     ],
 )
 def test_command_injection_finding_maps_to_application_scenario(finding):
-    assert scenario_slug_for_finding(finding) == (
-        "application-command-injection"
-    )
+    assert scenario_slug_for_finding(finding) == ("application-command-injection")
 
 
 def test_unmapped_finding_returns_none():
@@ -37,6 +35,7 @@ def test_unmapped_finding_returns_none():
     )
 
     assert scenario_slug_for_finding(finding) is None
+
 
 def test_javascript_sql_injection_maps_to_application_scenario():
     finding = SimpleNamespace(
@@ -49,9 +48,8 @@ def test_javascript_sql_injection_maps_to_application_scenario():
         ],
     )
 
-    assert scenario_slug_for_finding(finding) == (
-        "application-sql-injection"
-    )
+    assert scenario_slug_for_finding(finding) == ("application-sql-injection")
+
 
 def test_javascript_command_injection_maps_to_application_scenario():
     finding = SimpleNamespace(
@@ -63,9 +61,8 @@ def test_javascript_command_injection_maps_to_application_scenario():
         ],
     )
 
-    assert scenario_slug_for_finding(finding) == (
-        "application-command-injection"
-    )
+    assert scenario_slug_for_finding(finding) == ("application-command-injection")
+
 
 def test_javascript_path_injection_maps_to_application_scenario():
     finding = SimpleNamespace(
@@ -78,9 +75,8 @@ def test_javascript_path_injection_maps_to_application_scenario():
         ],
     )
 
-    assert scenario_slug_for_finding(finding) == (
-        "application-path-traversal"
-    )
+    assert scenario_slug_for_finding(finding) == ("application-path-traversal")
+
 
 @pytest.mark.parametrize(
     ("cwe", "expected"),
@@ -102,6 +98,7 @@ def test_cwe_fallback_mapping(cwe, expected):
     )
 
     assert scenario_slug_for_finding(finding) == expected
+
 
 @pytest.mark.parametrize(
     "rule_id",

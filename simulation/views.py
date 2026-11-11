@@ -11,11 +11,11 @@ from accounts.permissions import analyst_required
 from accounts.preferences import page_size, preferences_for
 from audit.models import AuditAction
 from audit.services import record_event
+from code_scans.models import CodeFinding
+from code_scans.services.simulation_mapping import scenario_slug_for_finding
 from remediation.services import tracked_controls
 from threats.models import ScenarioStatus, SecurityControl, SupplyChainStage
 from threats.services import visible_scenarios
-from code_scans.models import CodeFinding
-from code_scans.services.simulation_mapping import scenario_slug_for_finding
 
 from . import charts, services
 from .engine import LIMITATIONS, STATE_LABELS, SimulationConfigError
@@ -135,6 +135,7 @@ def configure_from_finding(request, finding_id):
 
     return _configure(request, code_finding=finding)
 
+
 @analyst_required
 def _configure(request, code_finding=None):
     scenarios = visible_scenarios(request.user)
@@ -165,16 +166,10 @@ def _configure(request, code_finding=None):
             "severity": source.severity,
             "impact": source.impact,
             "threshold": source.threshold,
-            "controls": SecurityControl.objects.filter(
-                slug__in=source.enabled_controls
-            ),
+            "controls": SecurityControl.objects.filter(slug__in=source.enabled_controls),
         }
 
-    slug = (
-        request.POST.get("scenario")
-        or request.GET.get("scenario")
-        or initial.get("scenario")
-    )
+    slug = request.POST.get("scenario") or request.GET.get("scenario") or initial.get("scenario")
 
     if slug:
         selected_scenario = scenarios.filter(slug=slug).first()
@@ -224,10 +219,7 @@ def _configure(request, code_finding=None):
             if run.status == RunStatus.COMPLETED:
                 # Do not automatically share simulations associated with
                 # private source-code findings.
-                if (
-                    code_finding is None
-                    and preferences_for(request.user).share_reports_by_default
-                ):
+                if code_finding is None and preferences_for(request.user).share_reports_by_default:
                     run.is_shared = True
                     run.save(update_fields=["is_shared"])
 
@@ -248,9 +240,7 @@ def _configure(request, code_finding=None):
     applicable = set()
 
     if selected_scenario:
-        applicable = set(
-            selected_scenario.controls.values_list("slug", flat=True)
-        )
+        applicable = set(selected_scenario.controls.values_list("slug", flat=True))
 
     return render(
         request,
@@ -259,31 +249,22 @@ def _configure(request, code_finding=None):
             "form": form,
             "scenario": selected_scenario,
             "applicable": applicable,
-            "controls": SecurityControl.objects.prefetch_related(
-                "stages"
-            ).order_by("category", "name"),
-            "pipeline": (
-                _scenario_preview(selected_scenario)
-                if selected_scenario
-                else None
-            ),
+            "controls": SecurityControl.objects.prefetch_related("stages").order_by("category", "name"),
+            "pipeline": (_scenario_preview(selected_scenario) if selected_scenario else None),
             "categories": CONTROL_GROUPS,
             "code_finding": code_finding,
         },
     )
 
+
 def _scenario_preview(scenario):
-    rules = list(
-        scenario.rules.select_related("source", "target")
-    )
+    rules = list(scenario.rules.select_related("source", "target"))
 
     graph_type = scenario.initial_stage.graph_type
 
     if graph_type == SupplyChainStage.GraphType.SUPPLY_CHAIN:
         # Preserve the complete five-stage supply-chain preview.
-        stage_queryset = SupplyChainStage.objects.filter(
-            graph_type=graph_type
-        )
+        stage_queryset = SupplyChainStage.objects.filter(graph_type=graph_type)
     else:
         # Application previews contain only stages on this scenario's path.
         stage_ids = {scenario.initial_stage_id}
@@ -302,11 +283,7 @@ def _scenario_preview(scenario):
             "key": stage.key,
             "name": stage.name,
             "position": stage.position,
-            "state": (
-                "entry"
-                if stage.pk == scenario.initial_stage_id
-                else "rule"
-            ),
+            "state": ("entry" if stage.pk == scenario.initial_stage_id else "rule"),
         }
         for stage in stage_queryset.order_by("position")
     ]
@@ -322,6 +299,7 @@ def _scenario_preview(scenario):
     ]
 
     return build_pipeline(stages, edges)
+
 
 def _run_pipeline(run, stage_results, events):
     stages = [
@@ -379,20 +357,12 @@ def _result_context(request, run):
     # A code finding is linked to an application-security simulation.
     if not graph_type:
         graph_type = (
-            SupplyChainStage.GraphType.APPLICATION
-            if run.code_finding_id
-            else SupplyChainStage.GraphType.SUPPLY_CHAIN
+            SupplyChainStage.GraphType.APPLICATION if run.code_finding_id else SupplyChainStage.GraphType.SUPPLY_CHAIN
         )
 
-    is_application = (
-        graph_type == SupplyChainStage.GraphType.APPLICATION
-    )
+    is_application = graph_type == SupplyChainStage.GraphType.APPLICATION
 
-    propagation_heading = (
-        "Application threat propagation"
-        if is_application
-        else "Supply chain propagation"
-    )
+    propagation_heading = "Application threat propagation" if is_application else "Supply chain propagation"
 
     pipeline_title = (
         "Simulated propagation through the application execution path"

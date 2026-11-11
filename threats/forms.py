@@ -152,6 +152,7 @@ def default_rules_for(stage):
         for a, b in zip(stages, stages[1:], strict=False)
     ]
 
+
 class ScenarioFilterForm(BootstrapFormMixin, forms.Form):
     q = forms.CharField(
         required=False, label="Search", widget=forms.TextInput(attrs={"placeholder": "Search scenarios"})

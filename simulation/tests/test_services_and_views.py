@@ -6,12 +6,12 @@ import pytest
 from django.urls import reverse
 
 from audit.models import AuditAction, AuditEvent
+from code_scans.models import CodeFinding, CodeScan
 from simulation import services
 from simulation.engine import SimulationConfigError, simulate
 from simulation.exports import safe_cell
 from simulation.models import PropagationEvent, RunStatus, SimulationRun, SimulationStageResult
 from threats.models import PropagationRule, SecurityControl, ThreatScenario
-from code_scans.models import CodeFinding, CodeScan
 
 pytestmark = pytest.mark.django_db
 
@@ -28,6 +28,7 @@ def run_for(user, slug="compromised-developer-account", controls=(), **overrides
     }
     params.update(overrides)
     return services.run_simulation(user, scenario, controls=SecurityControl.objects.filter(slug__in=controls), **params)
+
 
 def create_command_injection_finding(user):
     scan = CodeScan.objects.create(
@@ -54,6 +55,7 @@ def create_command_injection_finding(user):
         ],
     )
 
+
 class TestScenarioGraphIsolation:
     def test_all_existing_scenarios_use_only_supply_chain_stages(self, seeded):
         expected_stages = {
@@ -64,16 +66,20 @@ class TestScenarioGraphIsolation:
             "production",
         }
 
-        scenarios = ThreatScenario.objects.filter(
-            slug__in=[
-                "compromised-cicd-pipeline",
-                "compromised-developer-account",
-                "compromised-software-registry",
-                "compromised-vcs-account",
-                "malicious-dependency",
-                "production-credential-exposure",
-            ]
-        ).select_related("initial_stage").prefetch_related("controls")
+        scenarios = (
+            ThreatScenario.objects.filter(
+                slug__in=[
+                    "compromised-cicd-pipeline",
+                    "compromised-developer-account",
+                    "compromised-software-registry",
+                    "compromised-vcs-account",
+                    "malicious-dependency",
+                    "production-credential-exposure",
+                ]
+            )
+            .select_related("initial_stage")
+            .prefetch_related("controls")
+        )
 
         assert scenarios.count() == 6
 
@@ -87,9 +93,7 @@ class TestScenarioGraphIsolation:
                 controls=list(scenario.controls.all()),
             )
 
-            actual_stages = {
-                stage.key for stage in simulation_input.stages
-            }
+            actual_stages = {stage.key for stage in simulation_input.stages}
 
             assert actual_stages == expected_stages, scenario.slug
             assert scenario.initial_stage.graph_type == "supply_chain"
@@ -120,9 +124,7 @@ class TestScenarioGraphIsolation:
             ),
         ],
     )
-    def test_application_scenarios_use_only_their_path(
-        self, seeded, slug, expected_stages
-    ):
+    def test_application_scenarios_use_only_their_path(self, seeded, slug, expected_stages):
         scenario = ThreatScenario.objects.get(slug=slug)
 
         simulation_input = services.build_input(
@@ -148,14 +150,10 @@ class TestScenarioGraphIsolation:
             "application-insecure-deserialization",
         ],
     )
-    def test_application_scenario_runs_with_assigned_controls(
-        self, seeded, analyst, slug
-    ):
+    def test_application_scenario_runs_with_assigned_controls(self, seeded, analyst, slug):
         scenario = ThreatScenario.objects.get(slug=slug)
 
-        control_slugs = tuple(
-            scenario.controls.values_list("slug", flat=True)
-        )
+        control_slugs = tuple(scenario.controls.values_list("slug", flat=True))
 
         run = run_for(
             analyst,
@@ -176,6 +174,7 @@ class TestScenarioGraphIsolation:
                 controls=list(scenario.controls.all()),
             ).stages
         )
+
 
 class TestRunPersistence:
     def test_completed_run_is_saved_with_children(self, seeded, analyst):
@@ -267,14 +266,10 @@ class TestRunPersistence:
 
 
 class TestCodeFindingSimulation:
-    def test_simulation_run_is_associated_with_code_finding(
-        self, seeded, analyst
-    ):
+    def test_simulation_run_is_associated_with_code_finding(self, seeded, analyst):
         finding = create_command_injection_finding(analyst)
 
-        scenario = ThreatScenario.objects.get(
-            slug="application-command-injection"
-        )
+        scenario = ThreatScenario.objects.get(slug="application-command-injection")
 
         run = services.run_simulation(
             analyst,
@@ -294,14 +289,10 @@ class TestCodeFindingSimulation:
         assert run.code_finding == finding
         assert run.scenario_slug == "application-command-injection"
 
-    def test_another_users_finding_cannot_be_simulated(
-        self, seeded, analyst, other_analyst
-    ):
+    def test_another_users_finding_cannot_be_simulated(self, seeded, analyst, other_analyst):
         finding = create_command_injection_finding(other_analyst)
 
-        scenario = ThreatScenario.objects.get(
-            slug="application-command-injection"
-        )
+        scenario = ThreatScenario.objects.get(slug="application-command-injection")
 
         with pytest.raises(SimulationConfigError):
             services.run_simulation(
@@ -317,14 +308,10 @@ class TestCodeFindingSimulation:
 
         assert SimulationRun.objects.count() == 0
 
-    def test_finding_cannot_launch_an_unrelated_scenario(
-        self, seeded, analyst
-    ):
+    def test_finding_cannot_launch_an_unrelated_scenario(self, seeded, analyst):
         finding = create_command_injection_finding(analyst)
 
-        scenario = ThreatScenario.objects.get(
-            slug="application-sql-injection"
-        )
+        scenario = ThreatScenario.objects.get(slug="application-sql-injection")
 
         with pytest.raises(SimulationConfigError):
             services.run_simulation(
@@ -340,13 +327,12 @@ class TestCodeFindingSimulation:
 
         assert SimulationRun.objects.count() == 0
 
-    def test_normal_simulation_has_no_code_finding(
-        self, seeded, analyst
-    ):
+    def test_normal_simulation_has_no_code_finding(self, seeded, analyst):
         run = run_for(analyst)
 
         assert run.status == RunStatus.COMPLETED
         assert run.code_finding is None
+
 
 class TestConfigureView:
     def test_configure_prefills_scenario_values(self, seeded, analyst_client):
@@ -528,12 +514,8 @@ class TestReportAccess:
         assert safe_cell("normal") == "normal"
         assert safe_cell(5) == 5
 
-    def test_application_simulation_uses_application_heading_in_both_reports(
-        self, seeded, analyst, analyst_client
-    ):
-        scenario = ThreatScenario.objects.get(
-            slug="application-command-injection"
-        )
+    def test_application_simulation_uses_application_heading_in_both_reports(self, seeded, analyst, analyst_client):
+        scenario = ThreatScenario.objects.get(slug="application-command-injection")
         run = services.run_simulation(
             analyst,
             scenario,
@@ -545,17 +527,10 @@ class TestReportAccess:
         )
 
         assert run.status == RunStatus.COMPLETED
-        assert (
-            run.input_snapshot["scenario"]["graph_type"]
-            == "application"
-        )
+        assert run.input_snapshot["scenario"]["graph_type"] == "application"
 
-        detail = analyst_client.get(
-            reverse("simulation:detail", args=[run.id])
-        )
-        document = analyst_client.get(
-            reverse("reports:document", args=[run.id])
-        )
+        detail = analyst_client.get(reverse("simulation:detail", args=[run.id]))
+        document = analyst_client.get(reverse("reports:document", args=[run.id]))
 
         assert detail.status_code == 200
         assert document.status_code == 200
@@ -566,12 +541,8 @@ class TestReportAccess:
         assert b"Supply chain propagation" not in detail.content
         assert b"Supply chain propagation" not in document.content
 
-    def test_application_report_keeps_graph_label_after_scenario_deletion(
-        self, seeded, analyst, analyst_client
-    ):
-        scenario = ThreatScenario.objects.get(
-            slug="application-command-injection"
-        )
+    def test_application_report_keeps_graph_label_after_scenario_deletion(self, seeded, analyst, analyst_client):
+        scenario = ThreatScenario.objects.get(slug="application-command-injection")
         run = services.run_simulation(
             analyst,
             scenario,
@@ -587,17 +558,13 @@ class TestReportAccess:
 
         assert run.scenario is None
 
-        detail = analyst_client.get(
-            reverse("simulation:detail", args=[run.id])
-        )
-        document = analyst_client.get(
-            reverse("reports:document", args=[run.id])
-        )
+        detail = analyst_client.get(reverse("simulation:detail", args=[run.id]))
+        document = analyst_client.get(reverse("reports:document", args=[run.id]))
 
         assert detail.status_code == 200
         assert document.status_code == 200
         assert b"Application threat propagation" in detail.content
-        assert b"Application threat propagation" in document.content    
+        assert b"Application threat propagation" in document.content
 
 
 class TestComparison:

@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from django import forms
@@ -32,9 +31,7 @@ class CodeScanUploadForm(forms.Form):
         archive = self.cleaned_data["archive"]
 
         if Path(archive.name).suffix.lower() != ".zip":
-            raise forms.ValidationError(
-                "Please upload a ZIP archive (.zip)."
-            )
+            raise forms.ValidationError("Please upload a ZIP archive (.zip).")
 
         max_size = getattr(
             settings,
@@ -44,8 +41,6 @@ class CodeScanUploadForm(forms.Form):
 
         if archive.size > max_size:
             max_mb = max_size // (1024 * 1024)
-            raise forms.ValidationError(
-                f"The ZIP file must not exceed {max_mb} MB."
-            )
+            raise forms.ValidationError(f"The ZIP file must not exceed {max_mb} MB.")
 
         return archive

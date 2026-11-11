@@ -33,11 +33,14 @@ def test_supply_chain_map_counts_visible_paths_and_runs(seeded, analyst, other_a
     data = analyst_client.get(reverse("core:supply_chain")).context["map"]
     assert len(data["stages"]) == 5
     assert data["run_count"] == 1
-    assert data["scenario_count"] == ThreatScenario.objects.filter(
-        visibility="shared",
-        status="active",
-        initial_stage__graph_type="supply_chain",
-    ).count()
+    assert (
+        data["scenario_count"]
+        == ThreatScenario.objects.filter(
+            visibility="shared",
+            status="active",
+            initial_stage__graph_type="supply_chain",
+        ).count()
+    )
     assert data["edges"] and all(e["scenarios"] >= 1 for e in data["edges"])
     cicd = next(row for row in data["stages"] if row["stage"].key == "cicd")
     assert cicd["compromised"] == 1 and cicd["assets"]

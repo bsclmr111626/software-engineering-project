@@ -60,16 +60,10 @@ def supply_chain_map(user):
         initial_stage__graph_type=graph_type,
     )
     stages = list(
-        SupplyChainStage.objects.filter(graph_type=graph_type)
-        .prefetch_related("controls")
-        .order_by("position")
+        SupplyChainStage.objects.filter(graph_type=graph_type).prefetch_related("controls").order_by("position")
     )
 
-    entry_counts = dict(
-        scenarios.values_list("initial_stage__key")
-        .annotate(n=Count("id"))
-        .order_by()
-    )
+    entry_counts = dict(scenarios.values_list("initial_stage__key").annotate(n=Count("id")).order_by())
 
     runs = accessible_runs(user).filter(
         status=RunStatus.COMPLETED,
@@ -154,11 +148,10 @@ def supply_chain_map(user):
         "edges": edge_list,
         "scenario_count": scenarios.count(),
         "run_count": runs.count(),
-        "control_count": SecurityControl.objects.filter(
-            stages__graph_type=graph_type
-        ).distinct().count(),
+        "control_count": SecurityControl.objects.filter(stages__graph_type=graph_type).distinct().count(),
         "asset_count": sum(len(s["assets"]) for s in out),
     }
+
 
 def stage_profile(user, stage):
     scenarios = visible_scenarios(user).filter(

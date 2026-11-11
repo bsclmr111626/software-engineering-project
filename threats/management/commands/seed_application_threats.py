@@ -1,4 +1,3 @@
-
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -13,7 +12,6 @@ from threats.models import (
     ThreatScenario,
     Visibility,
 )
-
 
 STAGES = [
     {
@@ -266,7 +264,12 @@ SCENARIOS = [
         "detective_measures": "Monitor process creation, command arguments, and unusual child processes.",
         "rules": [
             ("external_input", "application", 90, "Untrusted input reaches application processing."),
-            ("application", "operating_system", 85, "Application processing reaches an operating-system command execution path."),
+            (
+                "application",
+                "operating_system",
+                85,
+                "Application processing reaches an operating-system command execution path.",
+            ),
         ],
         "controls": [
             "app-input-validation",
@@ -416,29 +419,27 @@ class Command(BaseCommand):
             # Keep the seeded propagation graph deterministic on reruns.
             scenario.rules.all().delete()
 
-            PropagationRule.objects.bulk_create([
-                PropagationRule(
-                    scenario=scenario,
-                    source=stages[source],
-                    target=stages[target],
-                    probability=probability,
-                    rationale=rationale,
-                )
-                for source, target, probability, rationale in rules
-            ])
+            PropagationRule.objects.bulk_create(
+                [
+                    PropagationRule(
+                        scenario=scenario,
+                        source=stages[source],
+                        target=stages[target],
+                        probability=probability,
+                        rationale=rationale,
+                    )
+                    for source, target, probability, rationale in rules
+                ]
+            )
 
             # Remove obsolete links before assigning the current catalogue.
-            ScenarioControl.objects.filter(scenario=scenario).exclude(
-                control__slug__in=control_slugs
-            ).delete()
+            ScenarioControl.objects.filter(scenario=scenario).exclude(control__slug__in=control_slugs).delete()
 
             for control_slug in control_slugs:
                 ScenarioControl.objects.update_or_create(
                     scenario=scenario,
                     control=controls[control_slug],
-                    defaults={
-                        "note": "Relevant mitigation for this application-security scenario."
-                    },
+                    defaults={"note": "Relevant mitigation for this application-security scenario."},
                 )
 
         self.stdout.write(

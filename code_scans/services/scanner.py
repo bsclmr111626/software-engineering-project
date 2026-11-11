@@ -1,17 +1,15 @@
-
-import shutil
-import stat
-import zipfile
-import json
-import subprocess
 import hashlib
+import json
+import stat
+import subprocess
 import tempfile
-from urllib.parse import unquote, urlparse
+import zipfile
 from pathlib import Path, PurePosixPath
+from urllib.parse import unquote, urlparse
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-from django.conf import settings
 
 
 class ScanArchiveError(Exception):
@@ -72,7 +70,10 @@ def _validate_archive_path(name):
 
         # Windows reserved device names.
         reserved = {
-            "CON", "PRN", "AUX", "NUL",
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
             *(f"COM{i}" for i in range(1, 10)),
             *(f"LPT{i}" for i in range(1, 10)),
         }
@@ -86,10 +87,7 @@ def _validate_archive_path(name):
 def _should_ignore(path):
     """Skip dependency, cache and generated directories."""
 
-    return any(
-        part.lower() in IGNORED_DIRECTORIES
-        for part in path.parts
-    )
+    return any(part.lower() in IGNORED_DIRECTORIES for part in path.parts)
 
 
 def extract_source_archive(uploaded_file, destination):
@@ -134,29 +132,21 @@ def extract_source_archive(uploaded_file, destination):
                 normalized_name = str(path).casefold()
 
                 if normalized_name in seen_paths:
-                    raise ScanArchiveError(
-                        "The archive contains duplicate file paths."
-                    )
+                    raise ScanArchiveError("The archive contains duplicate file paths.")
 
                 seen_paths.add(normalized_name)
 
                 if info.flag_bits & 0x1:
-                    raise ScanArchiveError(
-                        "Password-protected ZIP files are not supported."
-                    )
+                    raise ScanArchiveError("Password-protected ZIP files are not supported.")
 
                 unix_mode = info.external_attr >> 16
                 file_type = stat.S_IFMT(unix_mode)
 
                 if file_type == stat.S_IFLNK:
-                    raise ScanArchiveError(
-                        "Symbolic links are not allowed in uploaded archives."
-                    )
+                    raise ScanArchiveError("Symbolic links are not allowed in uploaded archives.")
 
                 if file_type not in (0, stat.S_IFREG, stat.S_IFDIR):
-                    raise ScanArchiveError(
-                        "The archive contains an unsupported file type."
-                    )
+                    raise ScanArchiveError("The archive contains an unsupported file type.")
 
                 if info.file_size < 0:
                     raise ScanArchiveError("The archive contains an invalid file.")
@@ -164,9 +154,7 @@ def extract_source_archive(uploaded_file, destination):
                 extracted_size += info.file_size
 
                 if extracted_size > max_extracted_size:
-                    raise ScanArchiveError(
-                        "The extracted archive exceeds the size limit."
-                    )
+                    raise ScanArchiveError("The extracted archive exceeds the size limit.")
 
             actual_extracted_size = 0
 
@@ -180,9 +168,7 @@ def extract_source_archive(uploaded_file, destination):
                 target = (destination / Path(*path.parts)).resolve()
 
                 if not target.is_relative_to(destination):
-                    raise ScanArchiveError(
-                        "The archive contains an unsafe file path."
-                    )
+                    raise ScanArchiveError("The archive contains an unsafe file path.")
 
                 target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -200,42 +186,29 @@ def extract_source_archive(uploaded_file, destination):
                             actual_extracted_size += len(chunk)
 
                             if actual_extracted_size > max_extracted_size:
-                                raise ScanArchiveError(
-                                    "The extracted archive exceeds the size limit."
-                                )
+                                raise ScanArchiveError("The extracted archive exceeds the size limit.")
 
                             if file_size > info.file_size:
-                                raise ScanArchiveError(
-                                    "The archive contains an invalid file."
-                                )
+                                raise ScanArchiveError("The archive contains an invalid file.")
 
                             output.write(chunk)
 
                 if file_size != info.file_size:
-                    raise ScanArchiveError(
-                        "The archive contains an incomplete or invalid file."
-                    )
+                    raise ScanArchiveError("The archive contains an incomplete or invalid file.")
 
                 extracted_files += 1
 
                 if target.suffix.lower() == ".py":
                     languages.add("python")
 
-                elif target.suffix.lower() in {
-                    ".js", ".jsx", ".ts", ".tsx"
-                }:
+                elif target.suffix.lower() in {".js", ".jsx", ".ts", ".tsx"}:
                     languages.add("javascript")
 
             if extracted_files == 0:
-                raise ScanArchiveError(
-                    "The archive contains no extractable files."
-                )
+                raise ScanArchiveError("The archive contains no extractable files.")
 
             if not languages:
-                raise ScanArchiveError(
-                    "No supported Python or JavaScript/TypeScript source files "
-                    "were found."
-                )
+                raise ScanArchiveError("No supported Python or JavaScript/TypeScript source files were found.")
 
             return languages
 
@@ -243,9 +216,7 @@ def extract_source_archive(uploaded_file, destination):
         raise ScanArchiveError("The uploaded file is not a valid ZIP archive.") from exc
 
     except (OSError, RuntimeError, EOFError) as exc:
-        raise ScanArchiveError(
-            "The archive could not be safely extracted."
-        ) from exc
+        raise ScanArchiveError("The archive could not be safely extracted.") from exc
 
 
 class CodeQLExecutionError(Exception):
@@ -253,14 +224,8 @@ class CodeQLExecutionError(Exception):
 
 
 CODEQL_SUITES = {
-    "python": (
-        "codeql/python-queries:"
-        "codeql-suites/python-security-extended.qls"
-    ),
-    "javascript": (
-        "codeql/javascript-queries:"
-        "codeql-suites/javascript-security-extended.qls"
-    ),
+    "python": ("codeql/python-queries:codeql-suites/python-security-extended.qls"),
+    "javascript": ("codeql/javascript-queries:codeql-suites/javascript-security-extended.qls"),
 }
 
 
@@ -268,7 +233,10 @@ def _run_command(command, timeout, working_directory):
     """Run CodeQL safely without invoking a shell."""
 
     try:
-        result = subprocess.run(
+        # CodeQL commands are constructed internally as argument lists.
+        # The executable is validated before invocation, and shell execution
+        # is disabled. Uploaded source files are analyzed, not executed here.
+        result = subprocess.run(  # noqa: S603
             command,
             cwd=str(working_directory),
             capture_output=True,
@@ -277,25 +245,21 @@ def _run_command(command, timeout, working_directory):
             errors="replace",
             timeout=timeout,
             check=False,
+            shell=False,
         )
 
     except subprocess.TimeoutExpired as exc:
-        raise CodeQLExecutionError(
-            "CodeQL exceeded the configured scan time limit."
-        ) from exc
+        raise CodeQLExecutionError("CodeQL exceeded the configured scan time limit.") from exc
 
     except FileNotFoundError as exc:
-        raise CodeQLExecutionError(
-            "CodeQL executable was not found. Check CODEQL_EXECUTABLE."
-        ) from exc
+        raise CodeQLExecutionError("CodeQL executable was not found. Check CODEQL_EXECUTABLE.") from exc
 
     if result.returncode != 0:
         # Do not expose potentially sensitive source paths or source contents.
         details = (result.stderr or result.stdout or "").strip()
 
         raise CodeQLExecutionError(
-            "CodeQL failed. "
-            + (details[-2000:] if details else "No error details were provided.")
+            "CodeQL failed. " + (details[-2000:] if details else "No error details were provided.")
         )
 
     return result
@@ -312,9 +276,7 @@ def run_codeql(source_directory, work_directory, languages):
     executable = Path(settings.CODEQL_EXECUTABLE)
 
     if not executable.is_file():
-        raise CodeQLExecutionError(
-            "CodeQL executable was not found. Check CODEQL_EXECUTABLE."
-        )
+        raise CodeQLExecutionError("CodeQL executable was not found. Check CODEQL_EXECUTABLE.")
 
     source_directory = Path(source_directory).resolve()
     work_directory = Path(work_directory).resolve()
@@ -335,9 +297,7 @@ def run_codeql(source_directory, work_directory, languages):
 
     for language in sorted(languages):
         if language not in CODEQL_SUITES:
-            raise CodeQLExecutionError(
-                f"Unsupported CodeQL language: {language}"
-            )
+            raise CodeQLExecutionError(f"Unsupported CodeQL language: {language}")
 
         database_directory = work_directory / f"{language}-database"
         sarif_file = work_directory / f"{language}-results.sarif"
@@ -377,29 +337,25 @@ def run_codeql(source_directory, work_directory, languages):
         )
 
         if not sarif_file.is_file():
-            raise CodeQLExecutionError(
-                f"CodeQL did not produce a SARIF report for {language}."
-            )
+            raise CodeQLExecutionError(f"CodeQL did not produce a SARIF report for {language}.")
 
         try:
             with sarif_file.open("r", encoding="utf-8") as report_file:
                 sarif_data = json.load(report_file)
 
         except (OSError, json.JSONDecodeError) as exc:
-            raise CodeQLExecutionError(
-                f"CodeQL produced an invalid SARIF report for {language}."
-            ) from exc
+            raise CodeQLExecutionError(f"CodeQL produced an invalid SARIF report for {language}.") from exc
 
         if not isinstance(sarif_data, dict):
-            raise CodeQLExecutionError(
-                f"The SARIF report for {language} has an invalid structure."
-            )
+            raise CodeQLExecutionError(f"The SARIF report for {language} has an invalid structure.")
 
-        reports.append({
-            "language": language,
-            "scanner_version": scanner_version,
-            "sarif": sarif_data,
-        })
+        reports.append(
+            {
+                "language": language,
+                "scanner_version": scanner_version,
+                "sarif": sarif_data,
+            }
+        )
 
     return reports
 
@@ -411,10 +367,7 @@ def _map_severity(result, rule):
     rule_properties = rule.get("properties") or {}
 
     # CodeQL commonly provides security-severity as a numeric string.
-    raw_security_severity = (
-        result_properties.get("security-severity")
-        or rule_properties.get("security-severity")
-    )
+    raw_security_severity = result_properties.get("security-severity") or rule_properties.get("security-severity")
 
     if raw_security_severity is not None:
         try:
@@ -497,12 +450,14 @@ def _get_fingerprint(result, rule_id, file_path, start_line, message):
                     return value[:255]
 
     # Fallback when CodeQL does not supply a fingerprint.
-    raw = "|".join([
-        rule_id,
-        file_path,
-        str(start_line or ""),
-        message,
-    ])
+    raw = "|".join(
+        [
+            rule_id,
+            file_path,
+            str(start_line or ""),
+            message,
+        ]
+    )
 
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -553,19 +508,11 @@ def parse_sarif(sarif_data, source_directory):
 
             rule = rules_by_id.get(rule_id, {})
 
-            rule_name = (
-                rule.get("name")
-                or rule.get("shortDescription", {}).get("text")
-                or rule_id
-            )
+            rule_name = rule.get("name") or rule.get("shortDescription", {}).get("text") or rule_id
 
             message_data = result.get("message") or {}
 
-            message = (
-                message_data.get("text")
-                or message_data.get("markdown")
-                or rule_name
-            )
+            message = message_data.get("text") or message_data.get("markdown") or rule_name
 
             message = str(message)
 
@@ -575,14 +522,9 @@ def parse_sarif(sarif_data, source_directory):
             physical_location = {}
 
             if locations:
-                physical_location = (
-                    locations[0]
-                    .get("physicalLocation", {})
-                )
+                physical_location = locations[0].get("physicalLocation", {})
 
-            artifact_location = (
-                physical_location.get("artifactLocation", {})
-            )
+            artifact_location = physical_location.get("artifactLocation", {})
 
             file_path = _get_finding_file_path(
                 artifact_location.get("uri", ""),
@@ -610,16 +552,9 @@ def parse_sarif(sarif_data, source_directory):
             if not isinstance(tags, list):
                 tags = []
 
-            tags = [
-                str(tag)[:100]
-                for tag in tags
-                if isinstance(tag, (str, int, float))
-            ][:30]
+            tags = [str(tag)[:100] for tag in tags if isinstance(tag, (str, int, float))][:30]
 
-            help_uri = (
-                rule.get("helpUri")
-                or rule.get("help", {}).get("text", "")
-            )
+            help_uri = rule.get("helpUri") or rule.get("help", {}).get("text", "")
 
             # Only retain selected metadata, not the entire SARIF result.
             properties = {}
@@ -630,10 +565,7 @@ def parse_sarif(sarif_data, source_directory):
                 "kind",
                 "problem.severity",
             ):
-                value = (
-                    result.get("properties", {}).get(key)
-                    or rule_properties.get(key)
-                )
+                value = result.get("properties", {}).get(key) or rule_properties.get(key)
 
                 if value is not None:
                     properties[key] = value
@@ -646,26 +578,27 @@ def parse_sarif(sarif_data, source_directory):
                 message,
             )
 
-            findings.append({
-                "rule_id": rule_id,
-                "rule_name": str(rule_name)[:255],
-                "message": message,
-                "severity": severity,
-                "file_path": file_path,
-                "start_line": start_line,
-                "end_line": end_line,
-                "start_column": start_column,
-                "end_column": end_column,
-                "help_uri": (
-                    str(help_uri)[:1000]
-                    if isinstance(help_uri, str)
-                    and help_uri.startswith(("http://", "https://"))
-                    else ""
-                ),
-                "fingerprint": fingerprint,
-                "tags": tags,
-                "properties": properties,
-            })
+            findings.append(
+                {
+                    "rule_id": rule_id,
+                    "rule_name": str(rule_name)[:255],
+                    "message": message,
+                    "severity": severity,
+                    "file_path": file_path,
+                    "start_line": start_line,
+                    "end_line": end_line,
+                    "start_column": start_column,
+                    "end_column": end_column,
+                    "help_uri": (
+                        str(help_uri)[:1000]
+                        if isinstance(help_uri, str) and help_uri.startswith(("http://", "https://"))
+                        else ""
+                    ),
+                    "fingerprint": fingerprint,
+                    "tags": tags,
+                    "properties": properties,
+                }
+            )
 
     return findings
 
@@ -681,9 +614,7 @@ def save_scan_results(scan, reports, source_directory):
     from code_scans.models import CodeFinding, CodeScan
 
     if not reports:
-        raise CodeQLExecutionError(
-            "CodeQL did not produce any language reports."
-        )
+        raise CodeQLExecutionError("CodeQL did not produce any language reports.")
 
     all_findings = []
     scanner_versions = set()
@@ -709,9 +640,7 @@ def save_scan_results(scan, reports, source_directory):
     # Prevent an unexpectedly large report from exhausting memory or
     # creating an excessive number of database records.
     if len(all_findings) > 20000:
-        raise CodeQLExecutionError(
-            "The scan produced too many findings to import safely."
-        )
+        raise CodeQLExecutionError("The scan produced too many findings to import safely.")
 
     severity_counts = {
         "critical": 0,
@@ -752,26 +681,26 @@ def save_scan_results(scan, reports, source_directory):
 
         scan.languages = sorted(detected_languages)
 
-        scan.scanner_version = ", ".join(
-            sorted(scanner_versions)
-        )[:50]
+        scan.scanner_version = ", ".join(sorted(scanner_versions))[:50]
 
         scan.status = CodeScan.Status.COMPLETED
         scan.completed_at = timezone.now()
         scan.error_message = ""
 
-        scan.save(update_fields=[
-            "total_findings",
-            "critical_findings",
-            "high_findings",
-            "medium_findings",
-            "low_findings",
-            "languages",
-            "scanner_version",
-            "status",
-            "completed_at",
-            "error_message",
-        ])
+        scan.save(
+            update_fields=[
+                "total_findings",
+                "critical_findings",
+                "high_findings",
+                "medium_findings",
+                "low_findings",
+                "languages",
+                "scanner_version",
+                "status",
+                "completed_at",
+                "error_message",
+            ]
+        )
 
     return scan
 
@@ -796,16 +725,18 @@ def mark_scan_failed(scan, error):
         scan.medium_findings = 0
         scan.low_findings = 0
 
-        scan.save(update_fields=[
-            "status",
-            "completed_at",
-            "error_message",
-            "total_findings",
-            "critical_findings",
-            "high_findings",
-            "medium_findings",
-            "low_findings",
-        ])
+        scan.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "error_message",
+                "total_findings",
+                "critical_findings",
+                "high_findings",
+                "medium_findings",
+                "low_findings",
+            ]
+        )
 
     return scan
 
@@ -825,19 +756,20 @@ def process_code_scan(scan, uploaded_file):
     scan.completed_at = None
     scan.error_message = ""
 
-    scan.save(update_fields=[
-        "status",
-        "started_at",
-        "completed_at",
-        "error_message",
-    ])
+    scan.save(
+        update_fields=[
+            "status",
+            "started_at",
+            "completed_at",
+            "error_message",
+        ]
+    )
 
     try:
         with tempfile.TemporaryDirectory(
             prefix="codeguard_scan_",
             ignore_cleanup_errors=True,
         ) as temporary_directory:
-
             temporary_root = Path(temporary_directory)
 
             source_directory = temporary_root / "source"
@@ -877,6 +809,3 @@ def process_code_scan(scan, uploaded_file):
     except Exception as exc:
         mark_scan_failed(scan, exc)
         raise
-
-
-

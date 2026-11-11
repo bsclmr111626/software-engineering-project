@@ -9,7 +9,6 @@ PERCENT = [MinValueValidator(0), MaxValueValidator(100)]
 LEVEL = [MinValueValidator(1), MaxValueValidator(5)]
 
 
-
 class SupplyChainStage(models.Model):
     """A stage in a supported threat simulation graph."""
 

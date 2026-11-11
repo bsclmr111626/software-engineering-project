@@ -1,4 +1,3 @@
-
 """Map CodeQL findings to relevant application threat scenarios."""
 
 # Exact CodeQL rule IDs take precedence over CWE-based fallback mappings.
@@ -6,10 +5,8 @@ RULE_SCENARIO_MAP = {
     # Command injection
     "py/command-line-injection": "application-command-injection",
     "js/command-line-injection": "application-command-injection",
-
     # SQL injection
     "js/sql-injection": "application-sql-injection",
-
     # Path traversal / path injection
     "js/path-injection": "application-path-traversal",
 }
@@ -19,12 +16,10 @@ CWE_SCENARIO_MAP = {
     # Command injection
     "cwe-078": "application-command-injection",
     "cwe-088": "application-command-injection",
-
     # SQL injection
     "cwe-089": "application-sql-injection",
     "cwe-090": "application-sql-injection",
     "cwe-943": "application-sql-injection",
-
     # Path traversal
     "cwe-022": "application-path-traversal",
     "cwe-023": "application-path-traversal",
