@@ -97,6 +97,6 @@ def test_every_seeded_scenario_simulates_successfully(seeded, analyst_client):
              "impact": scenario.impact, "threshold": scenario.propagation_threshold},
         )  # fmt: skip
         assert response.status_code == 302, scenario.slug
-    assert SimulationRun.objects.filter(status=RunStatus.COMPLETED).count() == 6
+    assert SimulationRun.objects.filter(status=RunStatus.COMPLETED).count() == 10
     for run in SimulationRun.objects.all():
         assert analyst_client.get(reverse("simulation:detail", args=[run.id])).status_code == 200

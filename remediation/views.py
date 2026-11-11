@@ -2,16 +2,17 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Sum
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import analyst_required, can_run_simulations
 from accounts.preferences import page_size
+from code_scans.models import CodeFinding
 from simulation.services import get_accessible_run
 
 from . import services
-from .forms import RemediationUpdateForm
+from .forms import CodeFindingRemediationForm, RemediationUpdateForm
 from .models import ACTIVE_STATUSES, RemediationStatus
 
 FILTERS = {
@@ -54,6 +55,11 @@ def plan(request):
         "unscheduled": active.filter(due_date__isnull=True).count(),
         "expected": round(active.aggregate(total=Sum("expected_reduction"))["total"] or 0, 1),
     }
+    code_items = services.code_items_for(request.user)
+    code_page = Paginator(
+        code_items,
+        50,
+    ).get_page(request.GET.get("code_page"))
     return render(
         request,
         "remediation/plan.html",
@@ -65,6 +71,7 @@ def plan(request):
             "sorts": {k: v[0] for k, v in SORTS.items()},
             "summary": summary,
             "querystring": f"status={key}&sort={sort}",
+            "code_page": code_page,
         },
     )
 
@@ -109,4 +116,79 @@ def detail(request, pk):
         request,
         "remediation/detail.html",
         {"item": item, "form": form, "can_edit": can_edit, "verified_by": services.verification(item)},
+    )
+
+
+# CodeQL finding remediation
+
+
+@analyst_required
+@require_POST
+def track_code_finding(request, finding_id):
+    finding = get_object_or_404(
+        CodeFinding.objects.select_related("scan"),
+        pk=finding_id,
+        scan__owner=request.user,
+    )
+
+    item, created = services.track_code_finding(
+        request.user,
+        finding,
+        request=request,
+    )
+
+    if created:
+        messages.success(
+            request,
+            "Code finding added to your remediation plan.",
+        )
+    else:
+        messages.info(
+            request,
+            "This finding is already on your remediation plan.",
+        )
+
+    return redirect("code_scans:detail", scan_id=finding.scan_id)
+
+
+@login_required
+def code_detail(request, pk):
+    item = services.get_code_item(request.user, pk)
+    can_edit = can_run_simulations(request.user)
+
+    form = CodeFindingRemediationForm(
+        request.POST or None,
+        instance=item,
+    )
+
+    if request.method == "POST":
+        if not can_edit:
+            messages.error(
+                request,
+                "Your role does not permit changing remediation items.",
+            )
+            return redirect("remediation:code_detail", pk=item.pk)
+
+        if form.is_valid():
+            services.update_code_item(
+                request.user,
+                item,
+                status=form.cleaned_data["status"],
+                note=form.cleaned_data["note"],
+                due_date=form.cleaned_data["due_date"],
+                request=request,
+            )
+
+            messages.success(request, "Code remediation item updated.")
+            return redirect("remediation:code_detail", pk=item.pk)
+
+    return render(
+        request,
+        "remediation/code_detail.html",
+        {
+            "item": item,
+            "finding": item.finding,
+            "form": form,
+            "can_edit": can_edit,
+        },
     )

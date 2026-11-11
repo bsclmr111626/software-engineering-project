@@ -28,6 +28,9 @@ class AuditAction(models.TextChoices):
     PREFERENCES_UPDATE = "preferences_update", "Updated preferences"
     SESSIONS_REVOKED = "sessions_revoked", "Signed out other sessions"
     DATA_EXPORT = "data_export", "Downloaded personal data"
+    CODE_SCAN_UPLOAD = "code_scan_upload", "Uploaded source code for scanning"
+    CODE_SCAN_COMPLETE = "code_scan_complete", "Completed code scan"
+    CODE_SCAN_FAILED = "code_scan_failed", "Code scan failed"
 
 
 class AppendOnlyQuerySet(models.QuerySet):

@@ -61,3 +61,43 @@ class RemediationItem(models.Model):
     @property
     def is_active(self):
         return self.status in ACTIVE_STATUSES
+
+
+class CodeFindingRemediation(models.Model):
+    """Remediation tracking for a source-code security finding."""
+
+    finding = models.OneToOneField(
+        "code_scans.CodeFinding",
+        on_delete=models.CASCADE,
+        related_name="remediation",
+    )
+
+    status = models.CharField(
+        max_length=16,
+        choices=RemediationStatus.choices,
+        default=RemediationStatus.OPEN,
+        db_index=True,
+    )
+
+    recommendation = models.TextField(help_text="Technical guidance for addressing the source-code finding.")
+
+    note = models.TextField(blank=True, max_length=2000)
+
+    due_date = models.DateField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["status", "due_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["status", "due_date"]),
+        ]
+
+    def __str__(self):
+        return f"Remediation for {self.finding.rule_id} ({self.get_status_display()})"
+
+    @property
+    def is_active(self):
+        return self.status in ACTIVE_STATUSES

@@ -1,0 +1,115 @@
+
+{% extends "layouts/app.html" %}
+
+{% block title %}Code Scans{% endblock %}
+
+{% block breadcrumbs %}
+<li aria-current="page">Code scans</li>
+{% endblock %}
+
+{% block content %}
+<div class="cg-page-head">
+    <div>
+        <div class="cg-eyebrow">
+            <i class="bi bi-code-slash" aria-hidden="true"></i>
+            Analyze
+        </div>
+        <h1>Code scans</h1>
+        <p class="lede">
+            Review source-code security scans and their findings.
+        </p>
+    </div>
+
+    <div class="cg-page-actions">
+        <a href="{% url 'code_scans:upload' %}" class="btn btn-primary">
+            <i class="bi bi-upload" aria-hidden="true"></i>
+            Upload source code
+        </a>
+    </div>
+</div>
+
+<section class="cg-section">
+    <div class="cg-panel">
+        {% if scans %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Uploaded file</th>
+                            <th>Status</th>
+                            <th>Findings</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in scans %}
+                            <tr>
+                                <td>
+                                    <strong>{{ scan.project_name }}</strong>
+                                </td>
+                                <td>{{ scan.uploaded_filename }}</td>
+                                <td>
+                                    {% include "components/status.html" with status=scan.status label=scan.get_status_display %}
+                                </td>
+                                <td>{{ scan.total_findings }}</td>
+                                <td>{{ scan.created_at|date:"M j, Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'code_scans:detail' scan_id=scan.pk %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Scan history pages">
+                    <ul class="pagination justify-content-end mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link"
+                                   href="?page={{ page_obj.previous_page_number }}">
+                                    Previous
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link"
+                                   href="?page={{ page_obj.next_page_number }}">
+                                    Next
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-file-earmark-code display-4 text-muted"
+                   aria-hidden="true"></i>
+                <h2 class="h5 mt-3">No scans yet</h2>
+                <p class="text-muted">
+                    Upload a ZIP archive containing Python or JavaScript source code
+                    to start your first scan.
+                </p>
+                <a href="{% url 'code_scans:upload' %}" class="btn btn-primary">
+                    Upload source code
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

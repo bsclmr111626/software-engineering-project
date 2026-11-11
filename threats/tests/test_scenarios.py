@@ -52,12 +52,45 @@ def scenario_payload(rules=(("vcs", "cicd", 70),), existing=0, **overrides):
 
 class TestSeedCommand:
     def test_seed_creates_reference_data(self, seeded):
-        assert SupplyChainStage.objects.count() == 5
-        assert list(SupplyChainStage.objects.values_list("key", flat=True)) == [
-            "ide", "vcs", "cicd", "registry", "production",
-        ]  # fmt: skip
-        assert SecurityControl.objects.count() >= 14
-        assert ThreatScenario.objects.filter(is_system=True, visibility=Visibility.SHARED).count() == 6
+
+        supply_chain_stages = SupplyChainStage.objects.filter(
+            graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN
+        ).order_by("position")
+
+        application_stages = SupplyChainStage.objects.filter(
+            graph_type=SupplyChainStage.GraphType.APPLICATION
+        ).order_by("position")
+
+        assert supply_chain_stages.count() == 5
+        assert list(supply_chain_stages.values_list("key", flat=True)) == [
+            "ide",
+            "vcs",
+            "cicd",
+            "registry",
+            "production",
+        ]
+
+        assert application_stages.count() == 6
+        assert list(application_stages.values_list("key", flat=True)) == [
+            "external_input",
+            "application",
+            "operating_system",
+            "database",
+            "file_system",
+            "deserialization",
+        ]
+
+        assert SupplyChainStage.objects.count() == 11
+        assert SecurityControl.objects.count() == 27
+
+        system_scenarios = ThreatScenario.objects.filter(
+            is_system=True,
+            visibility=Visibility.SHARED,
+        )
+        assert system_scenarios.count() == 10
+        assert system_scenarios.filter(initial_stage__graph_type=SupplyChainStage.GraphType.SUPPLY_CHAIN).count() == 6
+        assert system_scenarios.filter(initial_stage__graph_type=SupplyChainStage.GraphType.APPLICATION).count() == 4
+
         for scenario in ThreatScenario.objects.all():
             assert scenario.rules.exists()
             assert scenario.controls.exists()
@@ -128,7 +161,7 @@ class TestScenarioCrud:
     def test_library_lists_shared_scenarios(self, seeded, viewer_client):
         response = viewer_client.get(reverse("threats:list"))
         assert response.status_code == 200
-        assert response.context["page_obj"].paginator.count == 6
+        assert response.context["page_obj"].paginator.count == 10
 
     def test_search_and_filters(self, seeded, analyst_client):
         response = analyst_client.get(reverse("threats:list"), {"q": "publishing credential"})
@@ -276,7 +309,7 @@ class TestControlLibrary:
     def test_control_list_and_filters(self, seeded, viewer_client):
         response = viewer_client.get(reverse("threats:controls"))
         assert response.status_code == 200
-        assert len(response.context["controls"]) == 14
+        assert len(response.context["controls"]) == 27
         response = viewer_client.get(reverse("threats:controls"), {"category": "detective"})
         assert {c.category for c in response.context["controls"]} == {"detective"}
         response = viewer_client.get(reverse("threats:controls"), {"stage": "registry"})

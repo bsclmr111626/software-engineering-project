@@ -136,10 +136,19 @@ PropagationRuleFormSet = inlineformset_factory(
 
 def default_rules_for(stage):
     """Initial forward-chain rules suggested for a new custom scenario."""
-    later = SupplyChainStage.objects.filter(position__gte=stage.position).order_by("position")
+    later = SupplyChainStage.objects.filter(
+        graph_type=stage.graph_type,
+        position__gte=stage.position,
+    ).order_by("position")
+
     stages = list(later)
     return [
-        {"source": a.pk, "target": b.pk, "probability": 60, "rationale": "Normal forward flow"}
+        {
+            "source": a.pk,
+            "target": b.pk,
+            "probability": 60,
+            "rationale": "Normal forward flow",
+        }
         for a, b in zip(stages, stages[1:], strict=False)
     ]
 

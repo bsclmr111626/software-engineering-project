@@ -2,7 +2,7 @@ from django import forms
 
 from core.forms import BootstrapFormMixin
 
-from .models import RemediationItem
+from .models import CodeFindingRemediation, RemediationItem
 
 
 class RemediationUpdateForm(BootstrapFormMixin, forms.ModelForm):
@@ -14,3 +14,14 @@ class RemediationUpdateForm(BootstrapFormMixin, forms.ModelForm):
             "note": forms.Textarea(attrs={"rows": 4}),
         }
         help_texts = {"note": "Owner, ticket reference, decision rationale or anything a colleague should know."}
+
+
+class CodeFindingRemediationForm(forms.ModelForm):
+    class Meta:
+        model = CodeFindingRemediation
+        fields = ["status", "due_date", "note"]
+        widgets = {
+            "due_date": forms.DateInput(attrs={"type": "date"}),
+            "note": forms.Textarea(attrs={"rows": 4}),
+        }
+        help_texts = {"note": "Record the fix applied, ticket reference, decision rationale or other useful details."}

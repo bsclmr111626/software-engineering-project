@@ -10,6 +10,7 @@ urlpatterns = [
     path("settings/", include("accounts.settings_urls")),
     path("remediation/", include("remediation.urls")),
     path("audit/", include("audit.urls")),
+    path("code-scans/", include("code_scans.urls")),
     path("admin/", admin.site.urls),
 ]
 

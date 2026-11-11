@@ -1,0 +1,87 @@
+
+{% extends "layouts/app.html" %}
+
+{% block title %}Upload Source Code{% endblock %}
+
+{% block breadcrumbs %}
+<li><a href="{% url 'code_scans:list' %}">Code scans</a></li>
+<li aria-current="page">Upload</li>
+{% endblock %}
+
+{% block content %}
+<div class="cg-page-head">
+    <div>
+        <div class="cg-eyebrow">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            CodeQL analysis
+        </div>
+        <h1>Upload source code</h1>
+        <p class="lede">
+            Submit a ZIP archive for static security analysis.
+        </p>
+    </div>
+</div>
+
+<section class="cg-section">
+    <div class="cg-panel">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="{{ form.project_name.id_for_label }}" class="form-label">
+                    Project name
+                </label>
+                {{ form.project_name }}
+
+                {% for error in form.project_name.errors %}
+                    <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.archive.id_for_label }}" class="form-label">
+                    Source code ZIP file
+                </label>
+                {{ form.archive }}
+
+                {% for error in form.archive.errors %}
+                    <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+
+                <div class="form-text">
+                    Maximum upload size: 25 MB. Supported source languages:
+                    Python and JavaScript/TypeScript.
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Before uploading:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Upload a ZIP archive containing your source code.</li>
+                    <li>Do not include passwords, API keys or other secrets.</li>
+                    <li>Dependencies and generated folders are excluded where possible.</li>
+                    <li>Your uploaded archive is processed in temporary storage.</li>
+                </ul>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    Start security scan
+                </button>
+
+                <a href="{% url 'code_scans:list' %}"
+                   class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

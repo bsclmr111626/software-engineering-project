@@ -64,4 +64,123 @@
   </div>
   {% endif %}
 </div>
+
+<section class="cg-section">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h2>Code Finding Remediation</h2>
+            <p class="text-muted mb-0">
+                Corrective actions tracked from CodeQL source-code scans.
+            </p>
+        </div>
+        <span class="cg-tab-count">
+            {{ code_page.paginator.count }} finding{{ code_page.paginator.count|pluralize }}
+        </span>
+    </div>
+
+    <div class="cg-panel cg-panel--flush">
+        {% if code_page.object_list %}
+            <div class="table-responsive">
+                <table class="table" aria-label="Code finding remediation items">
+                    <thead>
+                        <tr>
+                            <th scope="col">Project / Rule</th>
+                            <th scope="col">Severity</th>
+                            <th scope="col">File</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Due date</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in code_page %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'remediation:code_detail' item.pk %}">
+                                        {{ item.finding.scan.project_name }}
+                                    </a>
+                                    <span class="cg-cell-sub">
+                                        {{ item.finding.rule_id }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ item.finding.get_severity_display }}
+                                </td>
+
+                                <td>
+                                    <span class="small">
+                                        {{ item.finding.file_path|default:"Unknown file" }}
+                                        {% if item.finding.start_line %}
+                                            :{{ item.finding.start_line }}
+                                        {% endif %}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {% include "components/status.html" with status=item.status label=item.get_status_display %}
+                                </td>
+
+                                <td class="small text-nowrap">
+                                    {% if item.due_date %}
+                                        {{ item.due_date|date:"Y-m-d" }}
+                                    {% else %}
+                                        <span class="text-muted">Not scheduled</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <a href="{% url 'remediation:code_detail' item.pk %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if code_page.paginator.num_pages > 1 %}
+                <div class="cg-pagination">
+                    <span>{{ code_page.paginator.count }} code remediation items</span>
+                    <nav aria-label="Code remediation pagination">
+                        {% if code_page.has_previous %}
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href="?status={{ current }}&amp;sort={{ sort }}&amp;code_page={{ code_page.previous_page_number }}">
+                                Previous
+                            </a>
+                        {% endif %}
+
+                        <span class="small">
+                            Page {{ code_page.number }} of {{ code_page.paginator.num_pages }}
+                        </span>
+
+                        {% if code_page.has_next %}
+                            <a class="btn btn-sm btn-outline-secondary"
+                               href="?status={{ current }}&amp;sort={{ sort }}&amp;code_page={{ code_page.next_page_number }}">
+                                Next
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="cg-empty">
+                {% include "illustrations/empty.html" with kind="check" %}
+                <h3>No code findings tracked yet</h3>
+                <p>
+                    Open a completed code scan and add a finding to your
+                    remediation plan.
+                </p>
+                <a href="{% url 'code_scans:list' %}"
+                   class="btn btn-outline-secondary">
+                    View code scans
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
 {% endblock %}

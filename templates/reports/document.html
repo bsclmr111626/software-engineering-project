@@ -48,9 +48,9 @@
 
     {% if run.status == 'completed' %}
     <section id="propagation" aria-labelledby="prop-h">
-      <h2 id="prop-h">2. Propagation</h2>
+      <h2 id="prop-h">2. {{ propagation_heading }}</h2>
       <div class="cg-pipeline-frame">
-        {% include "components/pipeline.html" with svg_id="doc-graph" svg_title="Simulated propagation through the supply chain stages" %}
+        {% include "components/pipeline.html" with svg_id="doc-graph" svg_title=pipeline_title %}
         <div class="mt-3">{% include "components/legend.html" %}</div>
       </div>
     </section>

@@ -16,6 +16,7 @@ PASSWORD = "Str0ng-test-passphrase!"
 @pytest.fixture
 def seeded(db):
     call_command("seed_codeguard", verbosity=0)
+    call_command("seed_application_threats", verbosity=0)
 
 
 def _make_user(username, role):
