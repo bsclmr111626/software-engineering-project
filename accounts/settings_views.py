@@ -21,7 +21,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from audit.models import AuditAction, AuditEvent
-from audit.services import record_event
+from audit.services import client_ip, record_event
 from remediation.models import RemediationItem
 from simulation.models import SimulationRun
 from threats.models import ThreatScenario
@@ -293,7 +293,7 @@ def sessions(request):
             "expires": request.session.get_expiry_date(),
             "expires_at_close": settings.SESSION_EXPIRE_AT_BROWSER_CLOSE,
             "session_hours": settings.SESSION_COOKIE_AGE // 3600,
-            "ip": request.META.get("REMOTE_ADDR"),
+            "ip": client_ip(request),
             "recent_logins": AuditEvent.objects.filter(actor=request.user, action=AuditAction.LOGIN)[:8],
         },
     )
@@ -350,5 +350,6 @@ def organization(request):
             "user_total": get_user_model().objects.count(),
             "role_counts": [(label, roles.get(value, 0)) for value, label in Role.choices],
             "email_backend": settings.EMAIL_BACKEND.rsplit(".", 1)[-1],
+            "client_ip_source": settings.CODEGUARD_CLIENT_IP_HEADER or "REMOTE_ADDR",
         },
     )

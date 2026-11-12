@@ -34,12 +34,19 @@ settings switch to MD5 purely for speed).
 account for 15 minutes by guessing wrongly five times. Counting is done from audit events in the
 database, so it works across worker processes without a cache server.
 
-**Gap: client IP behind a proxy.** `audit.services.client_ip` deliberately trusts only
-`REMOTE_ADDR` ("X-Forwarded-For is client-controlled unless a trusted proxy is configured").
-Behind a reverse proxy every request has the proxy's address, so the per-IP limit (20) becomes a
-limit shared by **all** users, and audit events record the proxy IP. `docs/deployment.md`
-mentions raising the IP limit for shared NAT addresses but not this proxy effect. Status:
-**partial**.
+**Client IP behind a proxy.** `audit.services.client_ip` uses `REMOTE_ADDR` unless the
+deployment names a trusted header in `CODEGUARD_CLIENT_IP_HEADER` (for example `X-Real-IP`); it
+then takes the last entry of that header and falls back to `REMOTE_ADDR` if the value is not a
+valid address (`TestClientIp` in `audit/tests/test_audit.py`). Without the setting, every
+request behind a reverse proxy has the proxy's address, so the per-IP limit (20) becomes a
+limit shared by **all** users and audit events record the proxy IP. The live PythonAnywhere
+instance sits behind a proxy and does not have the setting yet; which address it currently
+records has not been checked (Settings > Sessions shows it). Status: **implemented and
+verified in tests; not yet configured on the live instance**.
+
+**Admin site sign-in.** `/admin/login/` uses `ThrottledAdminAuthenticationForm`
+(`accounts/admin.py`), so the same limits apply there
+(`test_admin_site_sign_in_has_the_same_limit`). Status: **verified**.
 
 ## 2. Sessions
 
@@ -182,7 +189,7 @@ are not recorded in the repository. Hashes (`--require-hashes`) are not used.
 |---|---|---|
 | Reports templates were not in Git: a deployment from the repository served 500 errors on `/reports/` | high (availability) | fixed in commit `eef6716` |
 | No MFA for CodeGuard accounts | medium | not implemented |
-| Per-IP throttling collapses to one shared bucket behind a proxy | medium | open |
+| Per-IP throttling collapses to one shared bucket behind a proxy | medium | fixed in code (`CODEGUARD_CLIENT_IP_HEADER`); to be set on the live instance |
 | Open registration by default, single-tenant sharing | medium | documented; mitigated by settings and `W001` |
 | Admin outside CSP and audit trail | low | documented |
 | Audit immutability only in the ORM | low | documented |

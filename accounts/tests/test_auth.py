@@ -232,6 +232,22 @@ class TestLoginThrottling:
         assert "Too many" in self.login(client, ip="10.9.9.9").content.decode()
         assert self.login(client, ip="10.0.0.2").status_code == 302
 
+    def test_admin_site_sign_in_has_the_same_limit(self, client, db):
+        """/admin/login/ uses its own form; it must not be a way around the lockout."""
+        get_user_model().objects.create_superuser("root", "root@example.com", PASSWORD)
+        url = reverse("admin:login")
+        for _ in range(5):
+            client.post(url, {"username": "root", "password": "wrong-password"}, REMOTE_ADDR="10.0.0.7")
+        response = client.post(url, {"username": "root", "password": PASSWORD}, REMOTE_ADDR="10.0.0.7")
+        assert response.status_code == 200
+        assert "Too many failed sign-in attempts" in response.content.decode()
+        assert "_auth_user_id" not in client.session
+
+    def test_admin_site_still_signs_in_staff(self, client, db):
+        get_user_model().objects.create_superuser("root", "root@example.com", PASSWORD)
+        response = client.post(reverse("admin:login"), {"username": "root", "password": PASSWORD})
+        assert response.status_code == 302
+
 
 class TestRegistrationPolicy:
     def test_closed_registration_refuses_and_hides_links(self, client, settings):

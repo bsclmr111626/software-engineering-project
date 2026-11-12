@@ -22,6 +22,7 @@ variables win over `.env`. Booleans go through `env_bool()`: `1`, `true`, `yes`,
 | `CODEGUARD_LOGIN_MAX_FAILURES` | `5` | Failed sign-ins per username in the window before lock | `int()` | yes (commented) |
 | `CODEGUARD_LOGIN_IP_MAX_FAILURES` | `20` | Failed sign-ins per client IP in the window | `int()` | yes (commented) |
 | `CODEGUARD_LOGIN_LOCKOUT_MINUTES` | `15` | Sliding window length | `int()` | yes (commented) |
+| `CODEGUARD_CLIENT_IP_HEADER` | empty | Header a trusted proxy sets to the visitor's address (e.g. `X-Real-IP`); empty means `REMOTE_ADDR` | yes (header-name characters only) | yes (commented) |
 | `CODEGUARD_LOG_FORMAT` | `text` | `text` or `json` log lines | yes | yes (commented) |
 | `CODEGUARD_LOG_LEVEL` | `INFO` | Level of the `codeguard` logger | — | yes (commented) |
 

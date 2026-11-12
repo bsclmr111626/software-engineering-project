@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 
 from audit.models import AuditAction, AuditEvent
-from audit.services import record_event, sanitize_metadata
+from audit.services import client_ip, record_event, sanitize_metadata
 
 pytestmark = pytest.mark.django_db
 
@@ -105,3 +105,39 @@ def test_retention_purge(analyst):
     assert purge.metadata == {"retention_days": 365, "deleted": 1}
     with pytest.raises(CommandError):
         call_command("purge_audit_events", "--days", "7")
+
+
+class TestClientIp:
+    """audit.services.client_ip: REMOTE_ADDR unless a trusted proxy header is configured."""
+
+    def get(self, rf, **meta):
+        return rf.get("/", REMOTE_ADDR="10.0.0.9", **meta)
+
+    def test_forwarding_headers_are_ignored_by_default(self, rf):
+        request = self.get(rf, HTTP_X_REAL_IP="203.0.113.5", HTTP_X_FORWARDED_FOR="203.0.113.5")
+        assert client_ip(request) == "10.0.0.9"
+
+    def test_configured_header_is_used(self, rf, settings):
+        settings.CODEGUARD_CLIENT_IP_META_KEY = "HTTP_X_REAL_IP"
+        assert client_ip(self.get(rf, HTTP_X_REAL_IP="203.0.113.5")) == "203.0.113.5"
+
+    def test_last_entry_of_a_forwarding_list_is_used(self, rf, settings):
+        settings.CODEGUARD_CLIENT_IP_META_KEY = "HTTP_X_FORWARDED_FOR"
+        request = self.get(rf, HTTP_X_FORWARDED_FOR="198.51.100.1, 203.0.113.5")
+        assert client_ip(request) == "203.0.113.5"
+
+    @pytest.mark.parametrize("value", ["", "not-an-address", "203.0.113.5<script>"])
+    def test_missing_or_invalid_header_falls_back(self, rf, settings, value):
+        settings.CODEGUARD_CLIENT_IP_META_KEY = "HTTP_X_REAL_IP"
+        assert client_ip(self.get(rf, HTTP_X_REAL_IP=value)) == "10.0.0.9"
+
+    def test_sign_in_limit_follows_the_configured_header(self, client, settings):
+        settings.CODEGUARD_CLIENT_IP_META_KEY = "HTTP_X_REAL_IP"
+        url = reverse("accounts:login")
+        for i in range(20):
+            client.post(url, {"username": f"user{i}", "password": "wrong"}, HTTP_X_REAL_IP="203.0.113.5")
+        blocked = client.post(url, {"username": "someone", "password": "wrong"}, HTTP_X_REAL_IP="203.0.113.5")
+        assert "Too many failed sign-in attempts" in blocked.content.decode()
+        other = client.post(url, {"username": "someone", "password": "wrong"}, HTTP_X_REAL_IP="203.0.113.6")
+        assert "Too many failed sign-in attempts" not in other.content.decode()
+        assert AuditEvent.objects.filter(ip_address="203.0.113.5").count() >= 20

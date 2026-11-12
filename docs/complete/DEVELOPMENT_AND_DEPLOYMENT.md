@@ -118,15 +118,46 @@ Requirements the code imposes on any deployment:
 
 ### 5.2 Hosting options
 
-Status of every option: **not set up, not tested.**
+| Option | Status |
+|---|---|
+| PythonAnywhere, free Beginner plan | **Deployed and verified** on 2026-11-12: <https://codeguard.pythonanywhere.com> |
+| Own Linux server or VM (the path `docs/deployment.md` §1–9 describes) | not set up, not tested |
+| Containers | no `Dockerfile` exists |
 
-* **Own Linux server or VM** — the path `docs/deployment.md` was written for.
-* **PythonAnywhere (free tier)** — discussed as a possibility only. It provides a managed WSGI
-  setup for Django, a static-files mapping and persistent disk, which fit a single SQLite file.
-  Points to check before relying on it: Python 3.12 availability, whether Matplotlib installs on
-  the free tier, the free tier's outbound-network and CPU limits, setting the environment
-  variables in its WSGI file, and HTTPS on the provided subdomain. None of this has been tried.
-* **Containers** — no `Dockerfile` exists.
+### 5.3 The live instance on PythonAnywhere
+
+Why this host: it keeps files on a persistent disk (the SQLite database survives restarts),
+runs Django through its own WSGI server, maps `/static/` without WhiteNoise and provides HTTPS
+on `codeguard.pythonanywhere.com`, all without a credit card. Hosts with ephemeral disks or
+serverless functions (Render free, Koyeb free, Vercel) would lose the SQLite file or need a
+hosted database.
+
+| Item | Value |
+|---|---|
+| Account / plan | `codeguard`, Beginner ($0): 1 web app, 512 MB disk, 100 console CPU-seconds a day |
+| Source | `git clone https://github.com/20Jojo/codeguard.git` into `/home/codeguard/codeguard` |
+| Python / virtualenv | 3.12, `/home/codeguard/.virtualenvs/codeguard`, `pip install --no-cache-dir -r requirements.txt` |
+| Configuration | `.env` in the project folder (mode 600, never committed): `DJANGO_DEBUG=false`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_BEHIND_PROXY=true`, `CODEGUARD_REGISTRATION=closed`, `CODEGUARD_DEFAULT_ROLE=analyst`, and a secret key generated on the server |
+| Database | SQLite at `/home/codeguard/codeguard/db.sqlite3`; `migrate`, then `seed_codeguard` without `--demo-users` |
+| WSGI file | `/var/www/codeguard_pythonanywhere_com_wsgi.py`: adds the project to `sys.path`, sets `DJANGO_SETTINGS_MODULE`, exposes `get_wsgi_application()`; settings load `.env` themselves |
+| Static files | Web tab mapping `/static/` → `/home/codeguard/codeguard/staticfiles` (135 files from `collectstatic`) |
+| HTTPS | Web tab "Force HTTPS" on; Django's own redirect, secure cookies and HSTS (3600 s) also active |
+
+**Checked on 2026-11-12**: `check --deploy` on the server gave 0 errors and two warnings
+(`security.W005`, `security.W021`); `http://` redirects (302) to `https://`; the home page
+returns 200 with the full Content-Security-Policy, HSTS, `X-Frame-Options: DENY`, `nosniff`,
+Referrer, Permissions and Cross-Origin-Opener policies and an `X-Request-ID`; `/healthz/`
+returns `{"status": "ok", "database": "ok"}`; the stylesheets load; `/accounts/register/`
+returns 403 (registration closed); unknown paths get CodeGuard's 404 page. Signing in and
+running a simulation were confirmed by the owner. **Not checked**: which address
+`REMOTE_ADDR` holds behind PythonAnywhere's proxy (see [SECURITY.md](SECURITY.md) §1),
+password-reset email (the console backend is still configured, so no mail is sent), and
+behaviour under load.
+
+**Upkeep**: on the Web tab, click "Run until 3 months from today" before the free web app
+expires; to release a change, push to `20Jojo/codeguard`, then in a Bash console
+`cd ~/codeguard`, `git pull`, `python manage.py migrate`, `python manage.py collectstatic
+--noinput`, and click Reload. Full steps: `docs/deployment.md` §10.
 
 ## 6. Operations
 

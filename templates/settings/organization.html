@@ -18,6 +18,7 @@
     <dt>Role for new accounts</dt><dd>{{ default_role }} <code class="ms-1">CODEGUARD_DEFAULT_ROLE</code></dd>
     <dt>Sign-in throttling</dt><dd>{{ lockout_failures }} failures per username or {{ lockout_ip_failures }} per IP address, then {{ lockout_minutes }} minutes</dd>
     <dt>Session lifetime</dt><dd>{{ session_hours }} hours{% if expires_at_close %}, and ends when the browser closes{% endif %}</dd>
+    <dt>Visitor address read from</dt><dd>{{ client_ip_source }}</dd>
     <dt>Email delivery</dt><dd>{{ email_backend }}</dd>
   </dl>
 </section>

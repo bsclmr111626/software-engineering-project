@@ -1,4 +1,7 @@
+import ipaddress
 import logging
+
+from django.conf import settings
 
 from .models import AuditEvent
 
@@ -23,10 +26,23 @@ def sanitize_metadata(metadata):
 
 
 def client_ip(request):
+    """The visitor's address, used for sign-in limits and audit records.
+
+    REMOTE_ADDR by default. Forwarding headers are client-controlled unless a
+    trusted proxy sets them, so one is read only when the deployment names it
+    in CODEGUARD_CLIENT_IP_HEADER. Proxies append to a forwarding list, so the
+    last entry is the one the nearest proxy wrote; anything that is not a
+    valid address falls back to REMOTE_ADDR.
+    """
     if request is None:
         return None
-    # REMOTE_ADDR only: X-Forwarded-For is client-controlled unless a trusted
-    # proxy is configured, so it is not trusted here.
+    meta_key = settings.CODEGUARD_CLIENT_IP_META_KEY
+    if meta_key:
+        candidate = request.META.get(meta_key, "").rpartition(",")[2].strip()
+        try:
+            return str(ipaddress.ip_address(candidate))
+        except ValueError:
+            pass
     return request.META.get("REMOTE_ADDR") or None
 
 

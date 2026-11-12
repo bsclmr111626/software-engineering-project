@@ -1,0 +1,26 @@
+name: Uptime
+
+# Checks the live site's health endpoint every 30 minutes. A failed run emails
+# the person who last edited this file (GitHub's default for scheduled runs).
+# GitHub pauses scheduled workflows after 60 days without repository activity.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  healthz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CODEGUARD_URL: ${{ vars.CODEGUARD_URL || 'https://codeguard.pythonanywhere.com' }}
+    steps:
+      - name: Health endpoint reports ok
+        run: |
+          body=$(curl --silent --show-error --fail --max-time 30 --retry 2 --retry-delay 20 "${CODEGUARD_URL%/}/healthz/")
+          echo "$body"
+          echo "$body" | grep -q '"status": "ok"'
+      - name: Home page loads over HTTPS
+        run: curl --silent --show-error --fail --max-time 30 --output /dev/null "${CODEGUARD_URL%/}/"

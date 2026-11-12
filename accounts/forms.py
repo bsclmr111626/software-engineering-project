@@ -1,5 +1,6 @@
 from django import forms
 from django.conf import settings
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
@@ -12,9 +13,9 @@ from .models import Role
 LOCKED_MESSAGE = "Too many failed sign-in attempts. Wait {minutes} minutes and try again."
 
 
-class ThrottledAuthenticationForm(AuthenticationForm):
-    """The standard sign-in form, refused before the password is checked once
-    the username or client IP has too many recent failures (see throttling.py)."""
+class ThrottledLoginMixin:
+    """Refuses a sign-in before the password is checked once the username or
+    client IP has too many recent failures (see throttling.py)."""
 
     def clean(self):
         username = (self.cleaned_data.get("username") or "").strip()
@@ -24,6 +25,15 @@ class ThrottledAuthenticationForm(AuthenticationForm):
                 LOCKED_MESSAGE.format(minutes=settings.CODEGUARD_LOGIN_LOCKOUT_MINUTES), code="throttled"
             )
         return super().clean()
+
+
+class ThrottledAuthenticationForm(ThrottledLoginMixin, AuthenticationForm):
+    """The standard sign-in form with the sign-in limits applied."""
+
+
+class ThrottledAdminAuthenticationForm(ThrottledLoginMixin, AdminAuthenticationForm):
+    """The Django admin sign-in form with the same limits, so /admin/login/
+    cannot be used to guess passwords without the lockout (accounts/admin.py)."""
 
 
 class RegistrationForm(UserCreationForm):

@@ -29,20 +29,22 @@ def _window_start():
 
 
 def username_failures(username):
-    start = _window_start()
-    last_success = (
-        AuditEvent.objects.filter(action=AuditAction.LOGIN, actor_username__iexact=username)
-        .order_by("-created_at")
-        .values_list("created_at", flat=True)
-        .first()
-    )
-    if last_success and last_success > start:
-        start = last_success
-    return AuditEvent.objects.filter(
+    failures = AuditEvent.objects.filter(
         action=AuditAction.LOGIN_FAILED,
         metadata__attempted_username__iexact=username,
-        created_at__gte=start,
-    ).count()
+        created_at__gte=_window_start(),
+    )
+    # "Before the last success" is decided by id, not time: events written in
+    # the same clock tick share a timestamp, but ids always increase.
+    last_success_id = (
+        AuditEvent.objects.filter(action=AuditAction.LOGIN, actor_username__iexact=username)
+        .order_by("-id")
+        .values_list("id", flat=True)
+        .first()
+    )
+    if last_success_id:
+        failures = failures.filter(id__gt=last_success_id)
+    return failures.count()
 
 
 def ip_failures(ip_address):

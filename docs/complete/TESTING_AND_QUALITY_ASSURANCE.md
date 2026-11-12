@@ -92,8 +92,9 @@ its requirement was not re-judged.
 * **Clean checkouts in CI.** Until commit `eef6716` the suite passed only in the developer's working
   tree (the Reports templates were git-ignored). A fresh clone now passes locally and GitHub
   Actions passed on run #7; no Jenkins run is on record.
-* **Real HTTPS, a real WSGI server and a reverse proxy** (examples in `docs/deployment.md` are
-  marked "not tested here").
+* **Real HTTPS, a real WSGI server and a reverse proxy** beyond the PythonAnywhere instance
+  (checked by hand on 2026-11-12, not by an automated test); the nginx and systemd examples in
+  `docs/deployment.md` are still marked "not tested here".
 * **Concurrency** beyond the one recorded 200-run experiment.
 * **Browser behaviour** of `app.js` (tooltips, stepper, theme toggle) except through the
   optional Node tools.

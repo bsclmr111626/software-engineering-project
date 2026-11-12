@@ -1,7 +1,8 @@
 # Diagram: CI/CD
 
-Two pipeline definitions exist. **Neither deploys anything.** Status, as far as can be verified
-from this machine:
+Two pipeline definitions exist. **Neither deploys anything**: the live PythonAnywhere instance
+is updated by hand (`git pull` on the server; see `docs/deployment.md` §10). Status, as far as
+can be verified from this machine:
 
 - `Jenkinsfile` — configured, **never executed on a Jenkins server**. Its commands were
   rehearsed by `scripts/rehearse_jenkinsfile.py` (README: SUCCESS on 2026-10-26).

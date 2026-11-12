@@ -2,6 +2,8 @@
 
 CodeGuard is an **educational** web application that shows how a security compromise can propagate through the software supply chain, from a developer's laptop to production, and how security controls change that outcome. Every score, decision and recommendation is produced by documented, deterministic rules you can inspect.
 
+**Live demo:** <https://codeguard.pythonanywhere.com> (PythonAnywhere free plan; accounts are created by the administrator).
+
 > CodeGuard is a simulation for teaching and discussion. It never scans, attacks or connects to real systems, its scenarios are hypothetical, and its numbers are illustrative model outputs, **not** a replacement for a professional security assessment.
 
 ## Quick start (run it on your own PC)
@@ -178,6 +180,7 @@ Settings are read from environment variables. A local `.env` file is loaded auto
 | `CODEGUARD_DEFAULT_ROLE` | `analyst` | Role for self-registered users: `analyst` or `viewer` (never admin) |
 | `CODEGUARD_REGISTRATION` | `open` | `open`, `domain` (with `CODEGUARD_REGISTRATION_DOMAINS`) or `closed`. Use `domain` or `closed` on any reachable deployment |
 | `CODEGUARD_LOGIN_MAX_FAILURES`, `CODEGUARD_LOGIN_IP_MAX_FAILURES`, `CODEGUARD_LOGIN_LOCKOUT_MINUTES` | `5`, `20`, `15` | Sign-in throttling |
+| `CODEGUARD_CLIENT_IP_HEADER` | empty (`REMOTE_ADDR`) | Header a trusted proxy sets to the visitor's address, e.g. `X-Real-IP`; used for sign-in limits and audit records |
 | `CODEGUARD_LOG_FORMAT` | `text` | `json` for one JSON object per log line |
 | `DJANGO_EMAIL_BACKEND`, `DJANGO_EMAIL_HOST`, … | console backend | Password-reset email (see [docs/deployment.md](docs/deployment.md)) |
 | `DJANGO_DB_PATH` | `./db.sqlite3` | SQLite file location |

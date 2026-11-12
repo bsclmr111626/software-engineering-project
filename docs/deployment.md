@@ -36,6 +36,7 @@ process manager. Production values:
 | `CODEGUARD_REGISTRATION_DOMAINS` | e.g. `example.edu` | Required with `domain`. |
 | `CODEGUARD_LOG_FORMAT` | `json` | One JSON object per line for log collectors. |
 | `CODEGUARD_LOGIN_MAX_FAILURES`, `CODEGUARD_LOGIN_IP_MAX_FAILURES`, `CODEGUARD_LOGIN_LOCKOUT_MINUTES` | defaults 5, 20, 15 | Sign-in throttling. Raise the IP limit if many users share one NAT address. |
+| `CODEGUARD_CLIENT_IP_HEADER` | e.g. `X-Real-IP` | The header your proxy overwrites with the visitor's address. Needed behind a proxy so sign-in limits and audit records use the real address; leave unset otherwise. |
 | `DJANGO_EMAIL_BACKEND`, `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_PORT`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`, `DJANGO_EMAIL_USE_TLS`, `DJANGO_DEFAULT_FROM_EMAIL` | the SMTP backend and your mail server | Password-reset email. The default prints emails to the console. |
 
 ## 3. First deployment
@@ -99,6 +100,11 @@ server {
   uptime monitor at it.
 - Every response has an `X-Request-ID` header, and every log line includes the same ID. When a
   user reports a problem, ask for the time and, if possible, that header.
+- `.github/workflows/uptime.yml` requests `/healthz/` and the home page every 30 minutes from
+  GitHub Actions and fails the run (GitHub then emails the workflow's last editor) when either
+  is down. Set the repository variable `CODEGUARD_URL` to check a different address. GitHub
+  pauses scheduled workflows after 60 days without repository activity, so an external
+  monitor is still worth adding.
 - Alert on: health check failures, `ERROR` log lines, bursts of `login_throttled` audit events
   (password guessing), and `simulation_failed` events.
 
@@ -140,3 +146,90 @@ Test a restore on a spare machine periodically; an untested backup is not a back
 3. `python manage.py check --deploy` and `python manage.py migrate`.
 4. `python manage.py seed_codeguard` (updates the control catalog; leaves edited scenarios alone).
 5. `python manage.py collectstatic --noinput`, then restart the service.
+
+`scripts/release.sh` runs these steps in order on a server checkout and adds two safeguards:
+it rehearses the migrations on a copy of the fresh backup before touching the real database,
+and it checks `/healthz/` afterwards. It stops at the first failure and prints the commit and
+backup to roll back to. Set `CODEGUARD_WSGI_FILE` (touched to reload the app) and
+`CODEGUARD_URL` (for the health check). It was run end to end on a scratch clone on Windows
+Git Bash; it has not yet been run on the live server.
+
+## 10. PythonAnywhere (free plan): the live instance
+
+CodeGuard runs at <https://codeguard.pythonanywhere.com> on PythonAnywhere's free Beginner plan (deployed
+2026-11-12). PythonAnywhere supplies the WSGI server, the TLS proxy and static-file serving, so
+sections 4 and 5 do not apply there. This is how it was set up; it was run, not just written.
+
+**1. Code and packages** (Bash console). Paste one line at a time: the console can prefix a
+multi-line paste with `^[[200~`, which breaks the first command.
+
+```bash
+cd ~ && git clone https://github.com/20Jojo/codeguard.git
+python3.12 -m venv ~/.virtualenvs/codeguard
+source ~/.virtualenvs/codeguard/bin/activate
+pip install --no-cache-dir -r ~/codeguard/requirements.txt   # no cache: 512 MB disk quota
+```
+
+**2. Configuration, database, static files.** In `~/codeguard`, create `.env` (the settings
+load it) with `DJANGO_DEBUG=false`, `DJANGO_ALLOWED_HOSTS=codeguard.pythonanywhere.com`,
+`DJANGO_CSRF_TRUSTED_ORIGINS=https://codeguard.pythonanywhere.com`, `DJANGO_BEHIND_PROXY=true`,
+`CODEGUARD_REGISTRATION=closed` and `CODEGUARD_DEFAULT_ROLE=analyst`, then append a secret key
+generated on the server so it is never displayed:
+
+```bash
+python -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(50))" >> .env
+chmod 600 .env
+python manage.py migrate
+python manage.py seed_codeguard            # no --demo-users: refused when DEBUG is off
+python manage.py collectstatic --noinput
+python manage.py check --deploy           # expect 0 errors; W005 and W021 only
+python manage.py createsuperuser          # becomes a CodeGuard admin
+```
+
+**3. Web app** (Web tab → Add a new web app → Manual configuration → Python 3.12). Source
+code `/home/codeguard/codeguard`; virtualenv `/home/codeguard/.virtualenvs/codeguard`; static
+files URL `/static/` → `/home/codeguard/codeguard/staticfiles`; Force HTTPS on. Replace the
+whole WSGI file (`/var/www/codeguard_pythonanywhere_com_wsgi.py`) with:
+
+```python
+import os
+import sys
+
+path = "/home/codeguard/codeguard"
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.environ["DJANGO_SETTINGS_MODULE"] = "codeguard.settings"
+
+from django.core.wsgi import get_wsgi_application
+
+application = get_wsgi_application()
+```
+
+Then click Reload.
+
+**Upgrades.** Push to `20Jojo/codeguard`, then in a Bash console with the virtualenv active:
+
+```bash
+cd ~/codeguard
+export CODEGUARD_WSGI_FILE=/var/www/codeguard_pythonanywhere_com_wsgi.py
+export CODEGUARD_URL=https://codeguard.pythonanywhere.com
+bash scripts/release.sh
+```
+
+The first release that contains the script still needs one manual `git pull` to fetch it.
+
+**Backups.** Every release takes one. Between releases, run `python manage.py backup_db` from
+a scheduled task if the plan offers one, otherwise by hand weekly, and download the newest
+file from `~/codeguard/backups/` (Files tab) so a copy exists off the server.
+
+**Visitor addresses.** Sign in and open Settings > Sessions. If the address shown is not your
+own public address, the server is seeing the proxy: add the header the host documents for the
+client address (PythonAnywhere: `X-Real-IP`) as `CODEGUARD_CLIENT_IP_HEADER` in `.env`,
+reload, and check again. Until then the per-IP sign-in limit is shared by all visitors.
+
+**Free-plan limits.** One web app, 512 MB of disk, 100 console CPU-seconds a day (consoles slow
+down rather than stop), outbound internet from code limited to allow-listed sites, no custom
+domain. The web app must be extended ("Run until 3 months from today" on the Web tab) or it is
+disabled. Password-reset email is not configured (console backend), so an administrator resets
+passwords.

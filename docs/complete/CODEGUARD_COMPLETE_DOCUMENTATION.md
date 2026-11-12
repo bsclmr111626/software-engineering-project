@@ -1,7 +1,8 @@
 # CodeGuard — Complete Technical Documentation
 
 **Software Supply Chain Risk Simulator** · documentation generated from the source at commit
-`8f5d092` plus the working tree, on 2026-11-10; updated after commits `eef6716` (Reports templates) and `8ca8b36` (CI passing).
+`8f5d092` plus the working tree, on 2026-11-10; updated after commits `eef6716` (Reports templates) and `8ca8b36` (CI passing), and after
+the first live deployment on PythonAnywhere (2026-11-12).
 
 This master document gives the whole picture in one read. Each section ends with links to the
 detailed documents, which carry the exact formulas, tables and tutorials:
@@ -110,8 +111,8 @@ criticality in the overall score. Status: **implemented and verified**
 | Live HTTP authorization matrix | Implemented but unverified | README records "all checks passed"; not re-run |
 | GitHub Actions workflow | Implemented and verified | first passing run: run #7 on commit `8ca8b36`, 2026-11-10, 1 min 5 s; runs #1–#6 failed (missing Reports templates, then a Markdown format check) |
 | Jenkins pipeline | Implemented but unverified | **never executed on Jenkins**; commands rehearsed only |
-| Production deployment guide | Partial | settings and commands tested; proxy/systemd examples untested; no server exists |
-| Hosting on PythonAnywhere | Not implemented | discussed as a possible option only |
+| Production deployment guide | Partial | settings and commands tested; proxy/systemd examples untested; no self-managed server exists |
+| Hosting on PythonAnywhere | Implemented and verified | live at <https://codeguard.pythonanywhere.com> since 2026-11-12 (free Beginner plan); HTTPS redirect, security headers, `/healthz/`, static files and closed registration checked from outside; sign-in and a simulation confirmed by the owner |
 | Multi-tenant organizations | Planned (decision pending) | `docs/engineering-assessment.md` H2 |
 | Asset-level graph | Planned | assessment M7 |
 | Uncertainty / Monte-Carlo mode | Planned | assessment M8 |
@@ -563,11 +564,12 @@ table: [references/environment-variables.md](references/environment-variables.md
 * **Production**: `docs/deployment.md` describes one Linux host with a WSGI server (gunicorn or
   waitress, installed separately), a TLS reverse proxy serving `collectstatic` output, SQLite on
   local disk, health checks, backups, retention and upgrades. The application-side parts are
-  tested; the systemd and nginx snippets are examples that were never run. No production or
-  staging server exists.
-* **Hosting options**: a self-managed Linux VM (the documented path); PythonAnywhere's free tier
-  was discussed as a possible option and **has not been set up or tried**; there is no
-  Dockerfile.
+  tested; the systemd and nginx snippets are examples that were never run on a server.
+* **Live instance**: <https://codeguard.pythonanywhere.com>, on PythonAnywhere's free Beginner plan since
+  2026-11-12, deployed from `github.com/20Jojo/codeguard` with registration closed. Steps and
+  upkeep: `docs/deployment.md` §10.
+* **Other hosting options**: a self-managed Linux VM (the path `docs/deployment.md` §1–9
+  describes) has not been set up; there is no Dockerfile.
 
 Details and troubleshooting:
 [DEVELOPMENT_AND_DEPLOYMENT.md](DEVELOPMENT_AND_DEPLOYMENT.md).
@@ -628,7 +630,8 @@ asset layer with trust relationships (M7).
 **Product and platform.** Single-tenant sharing (organizations need a product decision, H2);
 no MFA for CodeGuard accounts; no API; no background jobs; SQLite only.
 
-**Verification.** Jenkins never executed (GitHub Actions does pass, since run #7); no real deployment; no
+**Verification.** Jenkins never executed (GitHub Actions does pass, since run #7); one live
+deployment on PythonAnywhere's free plan, but none behind a self-managed proxy; no
 screen-reader test; no penetration test; browser and authorization checks last run 2026-10-26/28.
 
 **Immediate fixes suggested by this documentation pass**: the Reports templates and ignore rule

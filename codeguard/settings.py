@@ -5,6 +5,7 @@ loaded from a local ``.env`` file). See ``.env.example`` for the full list.
 """
 
 import os
+import re
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -152,6 +153,17 @@ if CODEGUARD_REGISTRATION == "domain" and not CODEGUARD_REGISTRATION_DOMAINS:
 CODEGUARD_LOGIN_MAX_FAILURES = int(os.environ.get("CODEGUARD_LOGIN_MAX_FAILURES", "5"))
 CODEGUARD_LOGIN_IP_MAX_FAILURES = int(os.environ.get("CODEGUARD_LOGIN_IP_MAX_FAILURES", "20"))
 CODEGUARD_LOGIN_LOCKOUT_MINUTES = int(os.environ.get("CODEGUARD_LOGIN_LOCKOUT_MINUTES", "15"))
+
+# Header a trusted reverse proxy sets to the visitor's address (for example
+# X-Real-IP). Empty means REMOTE_ADDR. Set it only when every request passes
+# through a proxy that overwrites the header; otherwise visitors could forge
+# their address and dodge the per-IP sign-in limit (audit/services.py).
+CODEGUARD_CLIENT_IP_HEADER = os.environ.get("CODEGUARD_CLIENT_IP_HEADER", "").strip()
+if CODEGUARD_CLIENT_IP_HEADER and not re.fullmatch(r"[A-Za-z0-9-]+", CODEGUARD_CLIENT_IP_HEADER):
+    raise ImproperlyConfigured("CODEGUARD_CLIENT_IP_HEADER must be a header name such as X-Real-IP.")
+CODEGUARD_CLIENT_IP_META_KEY = (
+    "HTTP_" + CODEGUARD_CLIENT_IP_HEADER.upper().replace("-", "_") if CODEGUARD_CLIENT_IP_HEADER else ""
+)
 
 # --- Email (password reset). Console backend prints emails locally. -------------
 EMAIL_BACKEND = os.environ.get("DJANGO_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
