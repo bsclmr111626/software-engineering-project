@@ -24,7 +24,7 @@ Brief: the complete product and UI/UX redesign of 2026-10-28. Each line says how
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| Original illustrations, no stock imagery, no broken external images | Done | Inline SVG only (hero, auth lattice, empty states, error page, step diagrams). The only external assets are Google Fonts, as before. |
+| Original illustrations, no stock imagery, no broken external images | Done | Inline SVG only (hero, auth lattice, empty states, error page, step diagrams). There are no external assets: the fonts are vendored since 2026-11-14. |
 | Supply chain and dependency visualisations | Done | Stage chain on Overview and Supply chain; aggregated propagation graph; per-run propagation diagram. |
 | Charts with meaningful descriptions | Verified | Inline SVG charts have `role="img"`, a description with the numbers, focusable marks with tooltips and a table view; `test_report_page_names_diagram_tables_and_charts`. |
 

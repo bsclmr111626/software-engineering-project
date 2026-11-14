@@ -3,10 +3,13 @@ privacy, terms and contact pages."""
 
 import io
 import json
+import re
 import urllib.error
+from pathlib import Path
 from unittest import mock
 
 import pytest
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import EmailMessage, get_connection
 from django.core.management import CommandError, call_command
@@ -153,3 +156,36 @@ class TestConventionalFiles:
     def test_pages_carry_link_preview_metadata(self, client):
         html = client.get(reverse("core:landing")).content.decode()
         assert 'property="og:title"' in html and 'property="og:description"' in html
+
+
+class TestSelfHostedAssets:
+    """Fonts, styles and scripts all come from this site: no third-party request."""
+
+    FONTS = Path(settings.BASE_DIR) / "static" / "vendor" / "fonts"
+
+    def test_every_font_the_stylesheet_names_exists_with_its_licence(self):
+        css = (self.FONTS / "fonts.css").read_text(encoding="utf-8")
+        files = re.findall(r"url\('([^']+)'\)", css)
+        assert len(files) == 8 and all(name.endswith(".woff2") for name in files)
+        for name in files:
+            assert (self.FONTS / name).read_bytes()[:4] == b"wOF2", name
+        for family in ("Instrument Sans", "JetBrains Mono", "Newsreader"):
+            assert f"font-family: '{family}'" in css
+        assert len(list(self.FONTS.glob("OFL-*.txt"))) == 3
+        assert "http" not in css
+
+    def test_design_tokens_use_the_hosted_families(self):
+        css = (Path(settings.BASE_DIR) / "static" / "css" / "codeguard.css").read_text(encoding="utf-8")
+        for family in ("Instrument Sans", "JetBrains Mono", "Newsreader"):
+            assert f'"{family}"' in css
+
+    @pytest.mark.parametrize("name", ["core:landing", "accounts:login", "core:help", "core:privacy"])
+    def test_pages_load_nothing_from_other_sites(self, client, name):
+        response = client.get(reverse(name))
+        html = response.content.decode()
+        assert "vendor/fonts/fonts.css" in html
+        external = re.findall(r'<(?:link|script|img)[^>]+(?:href|src)="(https?://[^"]+)"', html)
+        assert external == []
+        policy = response["Content-Security-Policy"]
+        assert "style-src 'self';" in policy and "font-src 'self';" in policy
+        assert "http" not in policy

@@ -1,8 +1,8 @@
 # Architecture
 
 CodeGuard is a **server-rendered Django monolith**: one deployable unit, six project apps, one
-SQLite database, no JavaScript build step and no external services at runtime apart from Google
-Fonts. Diagrams: [architecture](diagrams/architecture.md),
+SQLite database, no JavaScript build step and no third-party request from the browser (fonts,
+icons and Bootstrap are vendored). The one optional external service is the email provider. Diagrams: [architecture](diagrams/architecture.md),
 [request lifecycle](diagrams/request-lifecycle.md), [data flow](diagrams/data-flow.md).
 
 ## 1. Layers

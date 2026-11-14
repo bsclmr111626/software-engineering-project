@@ -136,7 +136,7 @@ Python plus three runtime packages.
 | Charts | Matplotlib (Agg backend) | 3.11.2 | PNG charts rendered in memory |
 | Configuration | python-dotenv | 1.2.4 | loads `.env` |
 | CSS/JS | Bootstrap + Bootstrap Icons (vendored), one hand-written `app.js`, one `codeguard.css` | not recorded | layout, components, progressive enhancement |
-| Fonts | Google Fonts (Instrument Sans, JetBrains Mono, Newsreader) | — | the only third-party request |
+| Fonts | Instrument Sans, JetBrains Mono, Newsreader, vendored in `static/vendor/fonts` | — | served from the site; no third-party request |
 | Tests | pytest, pytest-django, pytest-cov, coverage | 9.1.1 / 4.14.0 / 7.1.0 / 7.17.0 | 337 tests |
 | Quality | Ruff | 0.17.2 | lint (incl. security rules) and format |
 | Supply-chain hygiene | pip-audit | 2.10.1 | dependency vulnerability scan |
@@ -240,7 +240,7 @@ enhanced by one small script.
 **Why.** No build step, works without JavaScript for nearly everything, and keeps all logic on
 the server where it is tested.
 
-**How it works.** `templates/base.html` loads Google Fonts, vendored Bootstrap CSS/Icons,
+**How it works.** `templates/base.html` loads the vendored fonts, Bootstrap CSS/Icons,
 `static/css/codeguard.css`, the Bootstrap bundle and `static/js/app.js`, and writes the pre-paint
 theme script inline (allowed by its CSP hash). User preferences become `data-*` attributes on
 `<html>`, which the CSS token blocks read. `app.js` adds confirmation dialogs, loading states,
@@ -255,8 +255,7 @@ automatically. The five-stage pipeline diagram is an SVG whose geometry is compu
 **Source files.** `templates/`, `static/css/codeguard.css`, `static/js/app.js`, `core/theme.py`,
 `core/templatetags/codeguard_tags.py`, `accounts/preferences.py`.
 
-**Limitations.** The vendored Bootstrap version is not recorded; Google Fonts is a third-party
-request on every page; browser behaviour of `app.js` is tested only by the optional Node tools.
+**Limitations.** The vendored Bootstrap version is not recorded; browser behaviour of `app.js` is tested only by the optional Node tools.
 More: [ARCHITECTURE.md §4](ARCHITECTURE.md#4-frontend).
 
 ---
@@ -551,8 +550,8 @@ table: [references/environment-variables.md](references/environment-variables.md
 4. **`DJANGO_HSTS_INCLUDE_SUBDOMAINS` is undocumented** in `.env.example`.
 5. **A route-ordering edge case:** a scenario whose slug is `controls` could never be opened,
    because `threats/controls/` is matched first and `unique_slug` does not reserve it.
-6. **Comment drift:** `core/middleware.py` says the Google Fonts allowance is for "Source Serif
-   4", but `templates/base.html` loads Instrument Sans, JetBrains Mono and Newsreader.
+6. **Comment drift (fixed 2026-11-14):** `core/middleware.py` used to describe a Google Fonts
+   allowance for "Source Serif 4". The fonts are now vendored and the comment matches the code.
 
 ---
 

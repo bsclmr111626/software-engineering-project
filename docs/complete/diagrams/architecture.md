@@ -6,8 +6,7 @@ charts and CSV files from one SQLite file. Arrows show "calls / imports". The si
 
 ```mermaid
 flowchart TB
-    browser["Browser<br/>HTML + Bootstrap (vendored)<br/>static/js/app.js"]
-    fonts["fonts.googleapis.com<br/>(only third-party request)"]
+    browser["Browser<br/>HTML + Bootstrap, icons and fonts (all vendored)<br/>static/js/app.js"]
 
     subgraph django["Django 5.2 process — codeguard/settings.py, codeguard/urls.py"]
         mw["Middleware chain<br/>RequestId → Security → CSP → Session → Common<br/>→ CSRF → Auth → Messages → SessionEpoch → XFrame"]
@@ -34,7 +33,6 @@ flowchart TB
     db[("SQLite — db.sqlite3<br/>WAL, IMMEDIATE, foreign keys")]
 
     browser -->|HTTP| mw --> apps
-    browser -.-> fonts
     simulation --> eng
     eng --> prop --> risk
     eng --> domain

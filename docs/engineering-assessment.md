@@ -59,7 +59,7 @@ this rests on the existing IDOR tests and the live authorization matrix, not on 
 |---|---|---|
 | L1 | Simulations run synchronously inside the request. Fine at current cost (milliseconds); revisit only if the model grows. | Accepted |
 | L2 | Django admin is mounted at `/admin/` in every environment. It is superuser-only, but it is outside the app's CSP and audit trail. | Documented; disable or restrict at the proxy in production |
-| L3 | Headings load Source Serif 4 from Google Fonts: a third-party request on every page view. | Documented trade-off; can be vendored |
+| L3 | Fonts were loaded from Google Fonts: a third-party request on every page view. | Fixed 2026-11-14: the three typefaces are vendored in `static/vendor/fonts` and the CSP allows no outside origin |
 | L4 | The Jenkinsfile has never run on a Jenkins server; screen-reader testing has not been done. | Open (requires external resources) |
 
 ## Decision needed: organizations (H2)

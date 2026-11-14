@@ -315,10 +315,10 @@ Phase 1, in the repository, **not yet deployed**:
 | P1-3 invitations and user management | Invitations with role, 7-day single-use links (only a hash stored), resend, revoke, link shown once to the admin. User search and filters, detail page with activity, suspend (ends sessions), reactivate, send reset link |
 | P1-4 password reset | Per-address and per-IP limits, audit events, notice email after any password change, links expire after one hour, misleading page text fixed. A reset also confirms the address |
 | P1-5 unique email, email sign-in | Case-insensitive unique index (migration stops and lists conflicts if data breaks it). Sign in with username or email; failed attempts by email count against the account |
-| P1-6 legal pages | `/privacy/`, `/terms/`, `/contact/` describing actual behaviour, linked from the footer, sign-up and invitations. Fonts still load from Google, which the privacy notice says; hosting them locally is open |
+| P1-6 legal pages | `/privacy/`, `/terms/`, `/contact/` describing actual behaviour, linked from the footer, sign-up and invitations. Fonts are vendored in `static/vendor/fonts` since 2026-11-14, so pages make no third-party request and the CSP allows no outside origin |
 | Sign-up | Name fields, terms acknowledgement, honeypot, five submissions per IP per hour, no disclosure of registered addresses (the owner is emailed instead). Still switched off on the live site (P0-4) |
 
-Still open from Phase 1: local fonts. P1-7 (account closure) is Phase 2.
+Nothing is open in Phase 1's code. What Phase 1 still needs is on the server: email delivery.
 
 Phase 1 was deployed on 2026-11-14. Email delivery is **not configured on the live instance
 yet**, so no flow that sends email has been proven there; invitations work only by copying the

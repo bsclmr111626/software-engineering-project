@@ -4,10 +4,10 @@ from core.theme import INIT_SCRIPT_HASH
 class ContentSecurityPolicyMiddleware:
     """Send a strict Content-Security-Policy header.
 
-    CSS, JavaScript and images are served from this origin (Bootstrap is
-    vendored under static/vendor). The only third-party origins are Google
-    Fonts, for the Source Serif 4 heading face required by DESIGN.md. The
-    only inline script allowed is the pre-paint theme script, by its hash
+    CSS, JavaScript, images and fonts are all served from this origin
+    (Bootstrap, its icons and the typefaces are vendored under
+    static/vendor), so no third-party origin is allowed at all. The only
+    inline script allowed is the pre-paint theme script, by its hash
     (core/theme.py); no other inline scripts or styles run.
     """
 
@@ -15,9 +15,9 @@ class ContentSecurityPolicyMiddleware:
         [
             "default-src 'self'",
             f"script-src 'self' {INIT_SCRIPT_HASH}",
-            "style-src 'self' https://fonts.googleapis.com",
+            "style-src 'self'",
             "img-src 'self' data:",
-            "font-src 'self' https://fonts.gstatic.com",
+            "font-src 'self'",
             "connect-src 'self'",
             "form-action 'self'",
             "frame-ancestors 'none'",

@@ -44,7 +44,7 @@ There is no WSGI server in the requirements. `docs/deployment.md` recommends ins
 |---|---|---|
 | Bootstrap CSS + bundle JS | `static/vendor/bootstrap/` | Version not recorded in the repository |
 | Bootstrap Icons (CSS + fonts) | `static/vendor/bootstrap-icons/` | Version not recorded |
-| Google Fonts (Instrument Sans, JetBrains Mono, Newsreader) | loaded from `fonts.googleapis.com` in `templates/base.html` | The only third-party request; allowed by the CSP (`style-src`, `font-src`) |
+| Instrument Sans, JetBrains Mono, Newsreader (SIL Open Font License 1.1) | vendored as variable woff2 files in `static/vendor/fonts`, Latin and Latin Extended subsets, with `fonts.css` and the three `OFL-*.txt` licences | Served from the site itself; fetched from Google Fonts on 2026-11-14 |
 
 ## Not used
 
