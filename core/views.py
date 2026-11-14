@@ -1,5 +1,7 @@
 import logging
+from datetime import date
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import connection
@@ -159,6 +161,37 @@ def methodology(request):
             "bands": RISK_BANDS,
         },
     )
+
+
+# --- Legal and contact pages ----------------------------------------------------
+
+# Change when the wording of the privacy notice or terms changes.
+LEGAL_UPDATED = date(2026, 11, 12)
+
+
+def _public_page(request, template):
+    return render(
+        request,
+        template,
+        {
+            "layout": "layouts/app.html" if request.user.is_authenticated else "layouts/public.html",
+            "contact_email": settings.CODEGUARD_CONTACT_EMAIL,
+            "email_provider": "Brevo" if settings.EMAIL_BACKEND == "core.email.BrevoEmailBackend" else "",
+            "updated": LEGAL_UPDATED,
+        },
+    )
+
+
+def privacy(request):
+    return _public_page(request, "core/privacy.html")
+
+
+def terms(request):
+    return _public_page(request, "core/terms.html")
+
+
+def contact(request):
+    return _public_page(request, "core/contact.html")
 
 
 # --- Error handlers: friendly pages, never stack traces ------------------------

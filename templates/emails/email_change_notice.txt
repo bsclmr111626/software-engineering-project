@@ -1,0 +1,6 @@
+{% autoescape off %}Hello {{ user.get_full_name|default:user.get_username }},
+
+A request was made to change the email address of your {{ site_name }} account ({{ user.get_username }}) from this address to {{ new_email_masked }}.
+
+The change only happens after the new address is confirmed. If you did not ask for this, sign in and change your password now, then contact your administrator{% if contact_email %} ({{ contact_email }}){% endif %}.
+{% endautoescape %}

@@ -1,7 +1,10 @@
 {% extends "layouts/auth.html" %}
 {% block title %}Registration closed{% endblock %}
 {% block content %}
-<h1>Registration is closed</h1>
-<p>Accounts on this CodeGuard deployment are created by an administrator. Ask your administrator for access.</p>
-<a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+<h1>Access is by invitation</h1>
+<p>Accounts on this CodeGuard deployment are created by invitation. Ask your administrator to invite you; you will receive an email with a link to set up your account.</p>
+<div class="d-flex flex-wrap gap-2">
+  <a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+  <a class="btn btn-outline-secondary btn-lg" href="{% url 'core:contact' %}">Contact</a>
+</div>
 {% endblock %}

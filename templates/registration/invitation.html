@@ -1,0 +1,29 @@
+{% extends "layouts/auth.html" %}
+{% block title %}{% if invalid %}Invitation not valid{% else %}Accept your invitation{% endif %}{% endblock %}
+{% block content %}
+{% if invalid %}
+<h1>This invitation is not valid</h1>
+<p>It may have expired, already been accepted, been revoked, or been replaced by a newer invitation. Ask the person who invited you to send a new one.</p>
+<a class="btn btn-outline-secondary" href="{% url 'accounts:login' %}">Sign in</a>
+{% elif signed_in %}
+<h1>You are already signed in</h1>
+<p>This invitation is for <strong>{{ invitation.email }}</strong>. Sign out first if you want to create that account.</p>
+<form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">Sign out</button></form>
+{% else %}
+<h1>Join CodeGuard</h1>
+<p>You were invited as <strong>{{ invitation.get_role_display }}</strong>{% if invitation.invited_by %} by {{ invitation.invited_by.get_full_name|default:invitation.invited_by.get_username }}{% endif %}. Choose a username and password to create your account.</p>
+{% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  <div class="cg-field">
+    <label class="form-label" for="invite-email">Email</label>
+    <input class="form-control" id="invite-email" type="email" value="{{ invitation.email }}" readonly aria-describedby="invite-email-help">
+    <div class="form-text" id="invite-email-help">Set by the invitation. You can change it later in Settings.</div>
+  </div>
+  {% for field in form %}
+  {% if field.name == "accept_terms" %}{% include "registration/_terms_field.html" %}{% else %}{% include "components/field.html" %}{% endif %}
+  {% endfor %}
+  <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">Create my account</span><span class="btn-loading">Creating…</span></button>
+</form>
+{% endif %}
+{% endblock %}

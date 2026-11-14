@@ -1,0 +1,15 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Check your email{% endblock %}
+{% block content %}
+<h1>Check your email</h1>
+<p>{% if email %}If <strong>{{ email }}</strong> can be used, we have sent it a link to confirm the address.{% else %}We have sent a confirmation link to the address you entered.{% endif %} Open the link to finish, then sign in.</p>
+<ul class="small text-muted">
+  <li>The link works once and expires in {{ verification_hours }} hours.</li>
+  <li>Nothing after a few minutes? Check the spam folder.</li>
+  <li>If the address already has an account, we sent it a sign-in reminder instead.</li>
+</ul>
+<div class="d-flex flex-wrap gap-2 mt-3">
+  <a class="btn btn-primary" href="{% url 'accounts:login' %}">Go to sign in</a>
+  <a class="btn btn-outline-secondary" href="{% url 'accounts:resend_verification' %}">Send a new link</a>
+</div>
+{% endblock %}

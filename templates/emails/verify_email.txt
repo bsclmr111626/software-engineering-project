@@ -1,0 +1,8 @@
+{% autoescape off %}Hello {{ user.get_full_name|default:user.get_username }},
+
+Confirm that {{ email }} is your email address for {{ site_name }} by opening this link:
+
+{{ link }}
+
+The link works once and expires in {{ hours }} hours. If you did not create a {{ site_name }} account or ask to use this address, ignore this email; nothing will change.
+{% endautoescape %}

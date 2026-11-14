@@ -22,10 +22,12 @@ from django.views.decorators.http import require_POST
 
 from audit.models import AuditAction, AuditEvent
 from audit.services import client_ip, record_event
+from core.email import delivers_email, describe_backend
 from remediation.models import RemediationItem
 from simulation.models import SimulationRun
 from threats.models import ThreatScenario
 
+from . import emails, lifecycle
 from . import settings_forms as forms
 from .models import ColorMode, Profile, Role
 from .permissions import admin_required, get_role
@@ -103,15 +105,67 @@ def profile(request):
 
 @login_required
 def account(request):
-    form = forms.EmailChangeForm(request.POST or None, user=request.user)
+    """Changing the address is a request: the new address must be confirmed
+    with an emailed link before it replaces the old one, and the old address
+    is told about the request (accounts/lifecycle.py)."""
+    user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
+    form = forms.EmailChangeForm(request.POST or None, user=user)
     if request.method == "POST" and form.is_valid():
-        old = request.user.email
-        request.user.email = form.cleaned_data["email"]
-        request.user.save(update_fields=["email"])
-        record_event(request.user, AuditAction.EMAIL_CHANGE, request=request, had_email=bool(old))
-        messages.success(request, "Your email address has been changed.")
+        new_email = form.cleaned_data["email"]
+        if lifecycle.over_limit(AuditAction.VERIFICATION_SENT, request, new_email):
+            messages.error(request, "Too many confirmation emails were sent recently. Try again in an hour.")
+            return redirect("settings:account")
+        previous_pending = profile.pending_email
+        profile.pending_email = new_email
+        profile.save(update_fields=["pending_email", "updated_at"])
+        if not lifecycle.send_confirmation(request, user, new_email):
+            profile.pending_email = previous_pending
+            profile.save(update_fields=["pending_email", "updated_at"])
+            messages.error(
+                request, "We could not send the confirmation email, so your address was not changed. Try again later."
+            )
+            return redirect("settings:account")
+        record_event(user, AuditAction.EMAIL_CHANGE_REQUEST, request=request, had_email=bool(user.email))
+        if user.email:
+            emails.send(
+                "email_change_notice", user.email, {"user": user, "new_email_masked": lifecycle.mask_email(new_email)}
+            )
+        messages.success(request, f"We sent a confirmation link to {new_email}. Your address changes when you open it.")
         return redirect("settings:account")
-    return _render(request, "settings/account.html", "account", {"form": form, "role": get_role(request.user)})
+    return _render(
+        request,
+        "settings/account.html",
+        "account",
+        {"form": form, "role": get_role(user), "profile": profile, "delivers_email": delivers_email()},
+    )
+
+
+@login_required
+@require_POST
+def send_verification(request):
+    user = request.user
+    profile, _ = Profile.objects.get_or_create(user=user)
+    if not user.email or profile.email_verified:
+        return redirect("settings:account")
+    if lifecycle.over_limit(AuditAction.VERIFICATION_SENT, request, user.email):
+        messages.error(request, "Too many confirmation emails were sent recently. Try again in an hour.")
+    elif lifecycle.send_confirmation(request, user, user.email.lower()):
+        messages.success(request, f"We sent a confirmation link to {user.email}.")
+    else:
+        messages.error(request, "We could not send the confirmation email. Try again later.")
+    return redirect("settings:account")
+
+
+@login_required
+@require_POST
+def cancel_email_change(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    if profile.pending_email:
+        profile.pending_email = ""
+        profile.save(update_fields=["pending_email", "updated_at"])
+        messages.success(request, "The email change was cancelled; its confirmation link no longer works.")
+    return redirect("settings:account")
 
 
 def _preference_page(form_class, template, page, success):
@@ -197,6 +251,9 @@ def export_data(request):
             "role": get_role(user),
             "job_title": getattr(getattr(user, "profile", None), "job_title", ""),
             "team": getattr(getattr(user, "profile", None), "team", ""),
+            "email_verified_at": _iso(getattr(getattr(user, "profile", None), "email_verified_at", None)),
+            "pending_email": getattr(getattr(user, "profile", None), "pending_email", ""),
+            "account_origin": getattr(getattr(user, "profile", None), "origin", ""),
         },
         "preferences": {
             field.name: getattr(preferences, field.name)
@@ -349,7 +406,8 @@ def organization(request):
             "expires_at_close": settings.SESSION_EXPIRE_AT_BROWSER_CLOSE,
             "user_total": get_user_model().objects.count(),
             "role_counts": [(label, roles.get(value, 0)) for value, label in Role.choices],
-            "email_backend": settings.EMAIL_BACKEND.rsplit(".", 1)[-1],
+            "email_backend": describe_backend(),
+            "from_email": settings.DEFAULT_FROM_EMAIL,
             "client_ip_source": settings.CODEGUARD_CLIENT_IP_HEADER or "REMOTE_ADDR",
         },
     )

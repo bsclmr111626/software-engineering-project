@@ -182,7 +182,11 @@ Settings are read from environment variables. A local `.env` file is loaded auto
 | `CODEGUARD_LOGIN_MAX_FAILURES`, `CODEGUARD_LOGIN_IP_MAX_FAILURES`, `CODEGUARD_LOGIN_LOCKOUT_MINUTES` | `5`, `20`, `15` | Sign-in throttling |
 | `CODEGUARD_CLIENT_IP_HEADER` | empty (`REMOTE_ADDR`) | Header a trusted proxy sets to the visitor's address, e.g. `X-Real-IP`; used for sign-in limits and audit records |
 | `CODEGUARD_LOG_FORMAT` | `text` | `json` for one JSON object per log line |
-| `DJANGO_EMAIL_BACKEND`, `DJANGO_EMAIL_HOST`, … | console backend | Password-reset email (see [docs/deployment.md](docs/deployment.md)) |
+| `DJANGO_EMAIL_BACKEND`, `DJANGO_EMAIL_HOST`, … | console backend | Account email: confirmation, invitations, password reset (see [docs/deployment.md](docs/deployment.md)) |
+| `BREVO_API_KEY` | empty | API key used by `DJANGO_EMAIL_BACKEND=core.email.BrevoEmailBackend` |
+| `CODEGUARD_CONTACT_EMAIL` | empty | Contact address shown on the contact, privacy and terms pages and in emails |
+| `CODEGUARD_ADMIN_EMAILS` | empty | Comma-separated addresses that receive server error emails when DEBUG is off |
+| `CODEGUARD_EMAIL_VERIFICATION_HOURS`, `CODEGUARD_INVITATION_DAYS` | `48`, `7` | Lifetime of email confirmation links and invitations |
 | `DJANGO_DB_PATH` | `./db.sqlite3` | SQLite file location |
 | `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SECURE_COOKIES`, `DJANGO_HSTS_SECONDS`, `DJANGO_BEHIND_PROXY` | secure when DEBUG is false | HTTPS hardening |
 

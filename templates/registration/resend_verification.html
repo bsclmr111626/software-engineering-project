@@ -1,0 +1,6 @@
+{% extends "registration/_simple_form.html" %}
+{% block title %}Send a new confirmation link{% endblock %}
+{% block heading %}Send a new confirmation link{% endblock %}
+{% block intro %}Enter the email address you registered with. If the account still needs confirming, we will send a new link.{% endblock %}
+{% block submit %}Send link{% endblock %}
+{% block after %}<p class="small mt-3 mb-0"><a href="{% url 'accounts:login' %}">Back to sign in</a></p>{% endblock %}

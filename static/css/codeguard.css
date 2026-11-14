@@ -1026,7 +1026,7 @@ details.cg-data[open] > summary { margin-bottom: var(--space-3); }
 @media (max-width: 767.98px) { .cg-cta { grid-template-columns: minmax(0, 1fr); } }
 
 .cg-site-footer { background: var(--surface-sunken); border-top: 1px solid var(--border); padding: var(--space-7) 0 var(--space-5); font-size: var(--fs-sm); color: var(--text-muted); }
-.cg-site-footer-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: var(--space-6); }
+.cg-site-footer-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: var(--space-6); }
 @media (max-width: 767.98px) { .cg-site-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cg-site-footer-grid > :first-child { grid-column: 1 / -1; } }
 .cg-site-footer h2 { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 400; color: var(--text-muted); margin-bottom: var(--space-3); }
 .cg-site-footer ul { list-style: none; margin: 0; padding: 0; }
@@ -1099,3 +1099,6 @@ details.cg-data[open] > summary { margin-bottom: var(--space-3); }
 .cg-crumbs { flex-wrap: nowrap; }
 .cg-crumbs li:last-child { min-width: 0; }
 @media (max-width: 575.98px) { .cg-crumbs [aria-current="page"] { max-width: 100%; } }
+
+/* Sign-up honeypot: kept out of view and out of the accessibility tree; people never fill it in. */
+.cg-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }

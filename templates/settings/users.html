@@ -3,40 +3,103 @@
 {% block title %}Users and roles · Settings{% endblock %}
 {% block settings_title %}Users and roles{% endblock %}
 {% block settings_body %}
-<header><h1>Users and roles</h1><p>Only administrators can change roles. You cannot change your own role, and superusers are always administrators. Every change is recorded in the audit log.</p></header>
-<div class="cg-panel cg-panel--flush">
-  <div class="table-responsive">
-    <table class="table" aria-label="Users and their roles">
-      <thead><tr><th scope="col">User</th><th scope="col">Joined</th><th scope="col">Role</th></tr></thead>
-      <tbody>
-        {% for u in page_obj %}
-        <tr>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              <span class="cg-avatar" aria-hidden="true">{{ u|display_initials }}</span>
-              <span><strong>{{ u.get_full_name|default:u.get_username }}</strong>{% if u == user %} <span class="tag">you</span>{% endif %}{% if u.is_superuser %} <span class="tag">superuser</span>{% endif %}<span class="cg-cell-sub">@{{ u.get_username }}{% if u.email %} · {{ u.email }}{% endif %}</span></span>
-            </div>
-          </td>
-          <td class="small text-nowrap">{{ u.date_joined|date:"Y-m-d" }}</td>
-          <td>
-            {% if u == user or u.is_superuser %}
-            <span class="tag">{{ u.codeguard_role|title }}</span>
-            {% else %}
-            <form method="post" action="{% url 'settings:change_role' u.pk %}" class="d-flex gap-2" data-confirm="Change the role of {{ u.get_username }}?">
-              {% csrf_token %}
-              <label class="visually-hidden" for="role-{{ u.pk }}">Role for {{ u.get_username }}</label>
-              <select class="form-select form-select-sm w-auto" id="role-{{ u.pk }}" name="role">
-                {% for value, label in roles %}<option value="{{ value }}" {% if u.codeguard_role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-              </select>
-              <button class="btn btn-sm btn-outline-secondary" type="submit">Save<span class="visually-hidden"> role for {{ u.get_username }}</span></button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<header><h1>Users and roles</h1><p>Invite people, change roles and suspend access. You cannot change your own account here, and superusers are always administrators. Every change is recorded in the audit log.</p></header>
+
+<section class="cg-settings-section" aria-labelledby="invite-h">
+  <h2 id="invite-h">Invite someone</h2>
+  <p class="cg-section-help">They receive an email with a link to choose their username and password. The link works once and expires in {{ invitation_days }} days. You never see or set their password.</p>
+  {% if invitation_link %}
+  <div class="alert {% if invitation_link.sent %}alert-info{% else %}alert-warning{% endif %}" role="status">
+    <p class="mb-2">Invitation link for <strong>{{ invitation_link.email }}</strong>{% if invitation_link.sent %} (also emailed){% endif %}. It is shown only now; anyone with it can create this account.</p>
+    <label class="visually-hidden" for="invite-link">Invitation link</label>
+    <input class="form-control font-monospace" id="invite-link" type="text" value="{{ invitation_link.link }}" readonly>
   </div>
-  {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} users</span>{% include "components/pagination.html" %}</div>{% endif %}
-</div>
+  {% endif %}
+  <form method="post" action="{% url 'settings:invite' %}" class="cg-filterbar" novalidate data-loading>
+    {% csrf_token %}
+    <div class="cg-filter"><label class="form-label" for="{{ invite_form.email.id_for_label }}">Email address</label>{{ invite_form.email }}</div>
+    <div class="cg-filter"><label class="form-label" for="{{ invite_form.role.id_for_label }}">Role</label>{{ invite_form.role }}</div>
+    <div class="d-flex gap-2"><button class="btn btn-primary" type="submit"><span class="btn-label">Send invitation</span><span class="btn-loading">Sending…</span></button></div>
+  </form>
+</section>
+
+{% if invitations %}
+<section class="cg-settings-section" aria-labelledby="pending-h">
+  <h2 id="pending-h">Open invitations</h2>
+  <div class="cg-panel cg-panel--flush">
+    <div class="table-responsive">
+      <table class="table" aria-label="Open invitations">
+        <thead><tr><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+          {% for inv in invitations %}
+          <tr>
+            <td>{{ inv.email }}<span class="cg-cell-sub">invited {{ inv.created_at|date:"Y-m-d" }}{% if inv.invited_by %} by {{ inv.invited_by.get_username }}{% endif %}{% if not inv.sent_at %} · not emailed{% endif %}</span></td>
+            <td>{{ inv.get_role_display }}</td>
+            <td class="small text-nowrap">{% if inv.status == "expired" %}<span class="tag tag-strong">Expired</span>{% else %}Expires {{ inv.expires_at|date:"Y-m-d" }}{% endif %}</td>
+            <td class="text-end text-nowrap">
+              <form method="post" action="{% url 'settings:resend_invitation' inv.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary" type="submit">Resend<span class="visually-hidden"> invitation to {{ inv.email }}</span></button></form>
+              <form method="post" action="{% url 'settings:revoke_invitation' inv.pk %}" class="d-inline" data-confirm="Revoke the invitation for {{ inv.email }}? Its link will stop working.">{% csrf_token %}<button class="btn btn-sm btn-ghost" type="submit">Revoke<span class="visually-hidden"> invitation to {{ inv.email }}</span></button></form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="cg-settings-section" aria-labelledby="people-h">
+  <h2 id="people-h">People</h2>
+  <form method="get" class="cg-filterbar" aria-label="Filter users">
+    <div class="cg-filter"><label class="form-label" for="f-q">Search</label><input class="form-control" id="f-q" name="q" value="{{ filters.q.value|default:'' }}" placeholder="Name, username or email"></div>
+    <div class="cg-filter"><label class="form-label" for="f-role">Role</label>
+      <select class="form-select" id="f-role" name="role">{% for value, label in filters.fields.role.choices %}<option value="{{ value }}" {% if filters.role.value == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+    <div class="cg-filter"><label class="form-label" for="f-status">Status</label>
+      <select class="form-select" id="f-status" name="status">{% for value, label in filters.fields.status.choices %}<option value="{{ value }}" {% if filters.status.value == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+    <div class="d-flex gap-2"><button class="btn btn-outline-secondary" type="submit">Filter</button>{% if request.GET %}<a class="btn btn-ghost" href="{% url 'settings:users' %}">Reset</a>{% endif %}</div>
+  </form>
+  {% if page_obj.object_list %}
+  <div class="cg-panel cg-panel--flush">
+    <div class="table-responsive">
+      <table class="table" aria-label="Users and their roles">
+        <thead><tr><th scope="col">User</th><th scope="col">Status</th><th scope="col">Joined</th><th scope="col">Role</th></tr></thead>
+        <tbody>
+          {% for u in page_obj %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="cg-avatar" aria-hidden="true">{{ u|display_initials }}</span>
+                <span><a href="{% url 'settings:user_detail' u.pk %}"><strong>{{ u.get_full_name|default:u.get_username }}</strong></a>{% if u == user %} <span class="tag">you</span>{% endif %}{% if u.is_superuser %} <span class="tag">superuser</span>{% endif %}<span class="cg-cell-sub">@{{ u.get_username }}{% if u.email %} · {{ u.email }}{% endif %}</span></span>
+              </div>
+            </td>
+            <td class="small text-nowrap">{% if not u.is_active %}<span class="tag tag-strong">Suspended</span>{% elif not u.profile.email_verified %}<span class="tag">Email not confirmed</span>{% else %}Active{% endif %}</td>
+            <td class="small text-nowrap">{{ u.date_joined|date:"Y-m-d" }}</td>
+            <td>
+              {% if u == user or u.is_superuser %}
+              <span class="tag">{{ u.codeguard_role|title }}</span>
+              {% else %}
+              <form method="post" action="{% url 'settings:change_role' u.pk %}" class="d-flex gap-2" data-confirm="Change the role of {{ u.get_username }}?">
+                {% csrf_token %}
+                <label class="visually-hidden" for="role-{{ u.pk }}">Role for {{ u.get_username }}</label>
+                <select class="form-select form-select-sm w-auto" id="role-{{ u.pk }}" name="role">
+                  {% for value, label in roles %}<option value="{{ value }}" {% if u.codeguard_role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Save<span class="visually-hidden"> role for {{ u.get_username }}</span></button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}<div class="cg-pagination"><span>{{ page_obj.paginator.count }} users</span>{% include "components/pagination.html" %}</div>{% endif %}
+  </div>
+  {% else %}
+  <div class="cg-panel"><div class="cg-empty">{% include "illustrations/empty.html" with kind="check" %}<h2>No users match</h2><p>Change the search or filters.</p></div></div>
+  {% endif %}
+</section>
 {% endblock %}

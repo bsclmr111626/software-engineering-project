@@ -1,0 +1,20 @@
+{% extends layout %}
+{% block title %}Contact{% endblock %}
+{% block breadcrumbs %}<li aria-current="page">Contact</li>{% endblock %}
+{% block content %}
+<div class="{% if not user.is_authenticated %}cg-wrap cg-site-main--doc {% endif %}cg-doc">
+<h1>Contact</h1>
+{% if contact_email %}
+<p class="lede">For access, account problems, data requests or security reports, email <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>
+{% else %}
+<p class="lede">This deployment has not published a contact address yet. If someone invited you, contact them directly.</p>
+{% endif %}
+<h2>Common requests</h2>
+<ul>
+  <li><strong>Getting access:</strong> {% if registration_open %}<a href="{% url 'accounts:register' %}">create an account</a>.{% else %}accounts are created by invitation; ask the administrator to invite you.{% endif %}</li>
+  <li><strong>Forgotten password:</strong> <a href="{% url 'accounts:password_reset' %}">reset it here</a>; the link goes to the email address on your account.</li>
+  <li><strong>Your data:</strong> see the <a href="{% url 'core:privacy' %}">privacy notice</a>.</li>
+  <li><strong>Security issue:</strong> please report it privately rather than in a shared report.</li>
+</ul>
+</div>
+{% endblock %}

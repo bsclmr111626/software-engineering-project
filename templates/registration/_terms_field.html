@@ -1,0 +1,7 @@
+<div class="cg-field">
+  <div class="form-check">
+    {{ field }}
+    <label class="form-check-label" for="{{ field.id_for_label }}">I have read the <a href="{% url 'core:terms' %}" target="_blank" rel="noopener">terms of use</a> and the <a href="{% url 'core:privacy' %}" target="_blank" rel="noopener">privacy notice</a></label>
+  </div>
+  {% if field.errors %}<div class="invalid-feedback d-block" id="{{ field.auto_id }}_error">{% for e in field.errors %}{{ e }}{% endfor %}</div>{% endif %}
+</div>

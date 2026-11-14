@@ -26,12 +26,17 @@ variables win over `.env`. Booleans go through `env_bool()`: `1`, `true`, `yes`,
 | `CODEGUARD_LOG_FORMAT` | `text` | `text` or `json` log lines | yes | yes (commented) |
 | `CODEGUARD_LOG_LEVEL` | `INFO` | Level of the `codeguard` logger | — | yes (commented) |
 
-## Email (password reset)
+## Email (account email: confirmation, invitations, password reset)
 
 | Variable | Default | In .env.example |
 |---|---|---|
 | `DJANGO_EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` (prints mail to the console) | yes (commented) |
 | `DJANGO_DEFAULT_FROM_EMAIL` | `codeguard@localhost` | yes (commented) |
+| `BREVO_API_KEY` | empty; the API key for `core.email.BrevoEmailBackend` | yes (commented) |
+| `CODEGUARD_CONTACT_EMAIL` | empty; contact address on the contact, privacy and terms pages and in emails | yes (commented) |
+| `CODEGUARD_ADMIN_EMAILS` | empty; comma-separated recipients of server error emails (DEBUG off) | yes (commented) |
+| `CODEGUARD_EMAIL_VERIFICATION_HOURS` | `48`; lifetime of email confirmation links | yes (commented) |
+| `CODEGUARD_INVITATION_DAYS` | `7`; lifetime of invitation links | yes (commented) |
 | `DJANGO_EMAIL_HOST` | `localhost` | yes (commented) |
 | `DJANGO_EMAIL_PORT` | `587` | yes (commented) |
 | `DJANGO_EMAIL_HOST_USER` | empty | yes (commented) |

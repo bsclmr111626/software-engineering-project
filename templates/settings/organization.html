@@ -20,6 +20,7 @@
     <dt>Session lifetime</dt><dd>{{ session_hours }} hours{% if expires_at_close %}, and ends when the browser closes{% endif %}</dd>
     <dt>Visitor address read from</dt><dd>{{ client_ip_source }}</dd>
     <dt>Email delivery</dt><dd>{{ email_backend }}</dd>
+    <dt>Email sender</dt><dd>{{ from_email }}</dd>
   </dl>
 </section>
 {% endblock %}

@@ -228,8 +228,35 @@ own public address, the server is seeing the proxy: add the header the host docu
 client address (PythonAnywhere: `X-Real-IP`) as `CODEGUARD_CLIENT_IP_HEADER` in `.env`,
 reload, and check again. Until then the per-IP sign-in limit is shared by all visitors.
 
+**Email (Brevo).** PythonAnywhere's free plan blocks SMTP but allows `api.brevo.com`, so
+CodeGuard sends account email over Brevo's HTTPS API (`core/email.py`). Brevo's free plan needs
+no card. Without a domain of your own, mail goes out from one verified address and is more
+likely to land in spam; SPF, DKIM and DMARC records need a custom domain.
+
+1. Create a Brevo account, then under Senders verify the address mail should come from.
+2. Create an API key (SMTP & API > API keys).
+3. Add to `~/codeguard/.env`, then Reload:
+
+   ```
+   DJANGO_EMAIL_BACKEND=core.email.BrevoEmailBackend
+   BREVO_API_KEY=<the key>
+   DJANGO_DEFAULT_FROM_EMAIL=CodeGuard <the verified address>
+   CODEGUARD_CONTACT_EMAIL=<where people should write>
+   CODEGUARD_ADMIN_EMAILS=<where server errors should go>
+   ```
+
+4. In a console: `python manage.py send_test_email you@example.com`. It prints Brevo's reason
+   if the message is refused.
+
+Until email works, invitations still work: the Users page shows each invitation link once, to
+copy and send by hand.
+
+**Access.** Keep `CODEGUARD_REGISTRATION=closed` and invite people from Settings > Users.
+Self-registration with email confirmation exists, but every account on an instance can read
+every shared report, so open sign-up waits for workspaces
+(`docs/PRODUCT_AND_ENGINEERING_AUDIT.md`, section 7).
+
 **Free-plan limits.** One web app, 512 MB of disk, 100 console CPU-seconds a day (consoles slow
 down rather than stop), outbound internet from code limited to allow-listed sites, no custom
 domain. The web app must be extended ("Run until 3 months from today" on the Web tab) or it is
-disabled. Password-reset email is not configured (console backend), so an administrator resets
-passwords.
+disabled. Brevo's free plan has a daily sending limit; check its current value in your Brevo account.

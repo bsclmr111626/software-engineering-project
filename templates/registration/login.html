@@ -2,14 +2,14 @@
 {% block title %}Sign in{% endblock %}
 {% block content %}
 <h1>Sign in</h1>
-<p>Welcome back. Sign in to run simulations and review your organization's reports.</p>
+<p>Welcome back. Sign in to run simulations and review your team's reports.</p>
 {% if form.non_field_errors %}
-<div class="alert alert-danger d-flex gap-2" role="alert" id="login-error"><i class="bi bi-x-octagon" aria-hidden="true"></i><div>{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div></div>
+<div class="alert alert-danger d-flex gap-2" role="alert" id="login-error"><i class="bi bi-x-octagon" aria-hidden="true"></i><div>{% for e in form.non_field_errors %}{{ e }}{% endfor %}{% if form.needs_verification %} <a href="{% url 'accounts:resend_verification' %}">Send a new link</a>{% endif %}</div></div>
 {% endif %}
 <form method="post" novalidate data-loading>
   {% csrf_token %}
   <div class="cg-field">
-    <label class="form-label" for="id_username">Username</label>
+    <label class="form-label" for="id_username">Username or email</label>
     <input class="form-control" type="text" name="username" id="id_username" autocomplete="username" required autofocus value="{{ form.username.value|default:'' }}"{% if form.errors %} aria-invalid="true" aria-describedby="login-error"{% endif %}>
   </div>
   <div class="cg-field">
@@ -20,6 +20,6 @@
   <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">Sign in</span><span class="btn-loading">Signing in…</span></button>
 </form>
 <div class="cg-auth-alt">
-  {% if registration_open %}<span>New to CodeGuard? <a href="{% url 'accounts:register' %}">Create an account</a></span>{% else %}<span>Accounts are created by your administrator.</span>{% endif %}
+  {% if registration_open %}<span>New to CodeGuard? <a href="{% url 'accounts:register' %}">Create an account</a></span>{% else %}<span>Need access? Ask your administrator for an invitation.</span>{% endif %}
 </div>
 {% endblock %}

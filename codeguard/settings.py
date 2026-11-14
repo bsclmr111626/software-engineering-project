@@ -126,6 +126,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+AUTHENTICATION_BACKENDS = ["accounts.backends.UsernameOrEmailBackend"]
+
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:start"
 LOGOUT_REDIRECT_URL = "core:landing"
@@ -165,9 +167,14 @@ CODEGUARD_CLIENT_IP_META_KEY = (
     "HTTP_" + CODEGUARD_CLIENT_IP_HEADER.upper().replace("-", "_") if CODEGUARD_CLIENT_IP_HEADER else ""
 )
 
-# --- Email (password reset). Console backend prints emails locally. -------------
+# --- Email. Console backend prints emails locally; production sets a real one. --
+# core.email.BrevoEmailBackend sends over HTTPS (works where SMTP is blocked).
 EMAIL_BACKEND = os.environ.get("DJANGO_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "codeguard@localhost")
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
+# Server errors are emailed to these addresses (comma-separated) when DEBUG is off.
+ADMINS = [("CodeGuard admin", address) for address in env_list("CODEGUARD_ADMIN_EMAILS")]
 # SMTP, used when DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend.
 EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
@@ -175,6 +182,13 @@ EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
 EMAIL_TIMEOUT = 10
+
+# --- Account lifecycle (accounts/tokens.py, accounts/invitations.py) --------------
+PASSWORD_RESET_TIMEOUT = 60 * 60  # reset links expire after one hour
+CODEGUARD_EMAIL_VERIFICATION_HOURS = int(os.environ.get("CODEGUARD_EMAIL_VERIFICATION_HOURS", "48"))
+CODEGUARD_INVITATION_DAYS = int(os.environ.get("CODEGUARD_INVITATION_DAYS", "7"))
+# Shown on the contact, privacy and terms pages and in emails. Empty hides it.
+CODEGUARD_CONTACT_EMAIL = os.environ.get("CODEGUARD_CONTACT_EMAIL", "").strip()
 
 # --- Session and cookie security ------------------------------------------------
 SESSION_COOKIE_HTTPONLY = True
@@ -210,7 +224,10 @@ if CODEGUARD_LOG_FORMAT not in {"text", "json"}:
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "filters": {"request_id": {"()": "core.observability.RequestIdFilter"}},
+    "filters": {
+        "request_id": {"()": "core.observability.RequestIdFilter"},
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+    },
     "formatters": {
         "text": {"format": "{levelname} {asctime} {name} [{request_id}]: {message}", "style": "{"},
         "json": {"()": "core.observability.JsonFormatter"},
@@ -220,10 +237,18 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": CODEGUARD_LOG_FORMAT,
             "filters": ["request_id"],
-        }
+        },
+        # Emails unhandled server errors to ADMINS (does nothing when ADMINS is empty).
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "include_html": False,
+        },
     },
     "root": {"handlers": ["console"], "level": "WARNING"},
     "loggers": {
+        "django.request": {"handlers": ["console", "mail_admins"], "level": "ERROR", "propagate": False},
         "codeguard": {
             "handlers": ["console"],
             "level": os.environ.get("CODEGUARD_LOG_LEVEL", "INFO"),

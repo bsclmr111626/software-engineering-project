@@ -304,6 +304,22 @@ Phase 0, in the repository but **not yet deployed to the live site**:
 | P1-8 monitoring | `.github/workflows/uptime.yml` checks the site every 30 minutes. Error emails wait for P1-1 |
 | P1-9 releases | `scripts/release.sh`: backup, migration rehearsal on a copy, health check, rollback hint. Run on a scratch clone only |
 
+Phase 0 was deployed on 2026-11-12; the client-IP header was then set on the live instance.
+
+Phase 1, in the repository, **not yet deployed**:
+
+| Finding | State |
+|---|---|
+| P1-1 email | `core.email.BrevoEmailBackend` (HTTPS, works on PythonAnywhere's free plan), plain-text templates in `templates/emails/`, `send_test_email`, deploy warning `codeguard.W002`, server errors emailed to `CODEGUARD_ADMIN_EMAILS`. Needs a Brevo account and key on the server |
+| P1-2 verification | Self-registered accounts must confirm their address before signing in; email changes take effect only after the new address is confirmed and the old one is told. Signed, expiring, single-use links; confirmation needs a button press, so mail scanners cannot use the link. Resend with per-address and per-IP limits, same response for any address |
+| P1-3 invitations and user management | Invitations with role, 7-day single-use links (only a hash stored), resend, revoke, link shown once to the admin. User search and filters, detail page with activity, suspend (ends sessions), reactivate, send reset link |
+| P1-4 password reset | Per-address and per-IP limits, audit events, notice email after any password change, links expire after one hour, misleading page text fixed. A reset also confirms the address |
+| P1-5 unique email, email sign-in | Case-insensitive unique index (migration stops and lists conflicts if data breaks it). Sign in with username or email; failed attempts by email count against the account |
+| P1-6 legal pages | `/privacy/`, `/terms/`, `/contact/` describing actual behaviour, linked from the footer, sign-up and invitations. Fonts still load from Google, which the privacy notice says; hosting them locally is open |
+| Sign-up | Name fields, terms acknowledgement, honeypot, five submissions per IP per hour, no disclosure of registered addresses (the owner is emailed instead). Still switched off on the live site (P0-4) |
+
+Still open from Phase 1: local fonts. P1-7 (account closure) is Phase 2.
+
 ## 14. What this audit could not verify
 
 - Anything behind sign-in on the live site, including which accounts exist.

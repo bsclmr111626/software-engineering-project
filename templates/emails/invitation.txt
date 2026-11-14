@@ -1,0 +1,11 @@
+{% autoescape off %}Hello,
+
+{{ inviter }} invited you to join {{ site_name }} as {{ role }}.
+
+{{ site_name }} models how a compromise could spread through a software supply chain and how much risk security controls remove. It never scans or connects to real systems.
+
+Accept the invitation and choose your password here:
+{{ link }}
+
+The link works once and expires on {{ expires|date:"j F Y" }}. If you were not expecting this, ignore the email; no account is created unless you accept.
+{% endautoescape %}

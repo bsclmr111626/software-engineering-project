@@ -19,9 +19,31 @@ the lock is short and every attempt is audited.
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from audit.models import AuditAction, AuditEvent
+
+
+def canonical_username(identifier):
+    """The username for a sign-in identifier, which may be an email address.
+
+    Limits are counted per account, so typing the email instead of the
+    username does not buy extra guesses. Unknown identifiers come back as typed.
+    """
+    identifier = (identifier or "").strip()
+    if "@" in identifier:
+        match = get_user_model().objects.filter(email__iexact=identifier).values_list("username", flat=True).first()
+        if match:
+            return match
+    return identifier
+
+
+def recent_events(action, minutes, **filters):
+    """How many ``action`` audit events match ``filters`` in the last ``minutes``.
+    Used for the email, sign-up and reset limits (accounts/views.py)."""
+    since = timezone.now() - timedelta(minutes=minutes)
+    return AuditEvent.objects.filter(action=action, created_at__gte=since, **filters).count()
 
 
 def _window_start():

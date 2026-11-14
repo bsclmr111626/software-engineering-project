@@ -1,0 +1,2 @@
+{% autoescape off %}{{ inviter }} invited you to {{ site_name }}
+{% endautoescape %}

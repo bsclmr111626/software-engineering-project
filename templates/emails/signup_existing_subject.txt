@@ -1,0 +1,2 @@
+{% autoescape off %}Someone tried to create a {{ site_name }} account with your email
+{% endautoescape %}

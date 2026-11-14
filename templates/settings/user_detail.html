@@ -1,0 +1,67 @@
+{% extends "layouts/settings.html" %}
+{% load codeguard_tags %}
+{% block title %}{{ target.get_username }} · Users · Settings{% endblock %}
+{% block settings_title %}{{ target.get_username }}{% endblock %}
+{% block settings_body %}
+<header>
+  <p class="small mb-1"><a href="{% url 'settings:users' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Users and roles</a></p>
+  <h1>{{ target.get_full_name|default:target.get_username }}</h1>
+  <p>@{{ target.get_username }}{% if target == user %} · this is you{% endif %}{% if target.is_superuser %} · superuser{% endif %}</p>
+</header>
+
+<section class="cg-settings-section" aria-labelledby="details-h">
+  <h2 id="details-h">Account</h2>
+  <dl class="cg-ledger">
+    <dt>Status</dt><dd>{% if target.is_active %}Active{% else %}<span class="tag tag-strong">Suspended</span>{% endif %}</dd>
+    <dt>Email</dt><dd>{{ target.email|default:"Not set" }}{% if target.email %} · {% if profile.email_verified %}confirmed {{ profile.email_verified_at|date:"Y-m-d" }}{% else %}not confirmed{% endif %}{% endif %}</dd>
+    {% if profile.pending_email %}<dt>Pending change</dt><dd>{{ profile.pending_email }}</dd>{% endif %}
+    <dt>Role</dt><dd>{{ target_role|title }}</dd>
+    <dt>Created through</dt><dd>{{ profile.get_origin_display }}</dd>
+    {% if profile.job_title or profile.team %}<dt>Job title and team</dt><dd>{{ profile.job_title|default:"—" }}{% if profile.team %} · {{ profile.team }}{% endif %}</dd>{% endif %}
+    <dt>Joined</dt><dd>{{ target.date_joined|date:"j F Y" }}</dd>
+    <dt>Last sign-in</dt><dd>{{ target.last_login|date:"Y-m-d H:i"|default:"Never" }}</dd>
+  </dl>
+</section>
+
+{% if can_manage %}
+<section class="cg-settings-section" aria-labelledby="manage-h">
+  <h2 id="manage-h">Manage access</h2>
+  <form method="post" action="{% url 'settings:change_role' target.pk %}" class="cg-filterbar" data-confirm="Change the role of {{ target.get_username }}?">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="detail">
+    <div class="cg-filter"><label class="form-label" for="detail-role">Role</label>
+      <select class="form-select" id="detail-role" name="role">{% for value, label in roles %}<option value="{{ value }}" {% if target_role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+    <div class="d-flex gap-2"><button class="btn btn-outline-secondary" type="submit">Save role</button></div>
+  </form>
+  <div class="cg-form-actions">
+    {% if target.is_active %}
+    <form method="post" action="{% url 'settings:suspend_user' target.pk %}" data-confirm="Suspend {{ target.get_username }}? They are signed out everywhere and cannot sign in until reactivated. Their work is kept.">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-slash-circle" aria-hidden="true"></i> Suspend</button></form>
+    {% if target.email %}
+    <form method="post" action="{% url 'settings:send_password_reset' target.pk %}" data-confirm="Email {{ target.email }} a password reset link?">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-envelope" aria-hidden="true"></i> Send password reset link</button></form>
+    {% endif %}
+    {% else %}
+    <form method="post" action="{% url 'settings:reactivate_user' target.pk %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Reactivate</button></form>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="cg-settings-section" aria-labelledby="activity-h">
+  <h2 id="activity-h">Recent activity</h2>
+  {% if events %}
+  <div class="cg-panel cg-panel--flush">
+    <div class="table-responsive">
+      <table class="table" aria-label="Recent activity of {{ target.get_username }}">
+        <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">By</th></tr></thead>
+        <tbody>
+          {% for e in events %}
+          <tr><td class="small text-nowrap">{{ e.created_at|date:"Y-m-d H:i" }}</td><td>{{ e.get_action_display }}{% if e.object_repr and e.object_type != "User" %}<span class="cg-cell-sub">{{ e.object_repr }}</span>{% endif %}</td><td class="small">{{ e.actor_username|default:"—" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}<p class="text-muted">No recorded activity.</p>{% endif %}
+</section>
+{% endblock %}

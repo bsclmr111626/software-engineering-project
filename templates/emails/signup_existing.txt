@@ -1,0 +1,12 @@
+{% autoescape off %}Hello,
+
+Someone tried to create a new {{ site_name }} account with {{ email }}. This address already belongs to an account, so no new account was created.
+
+If it was you, sign in instead:
+{{ login_link }}
+
+Forgot your password? Reset it here:
+{{ reset_link }}
+
+If it was not you, you can ignore this email. Your account has not changed.
+{% endautoescape %}

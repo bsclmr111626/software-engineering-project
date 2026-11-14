@@ -1,6 +1,7 @@
 """End-to-end workflow tests through the real URL routes, plus project checks."""
 
 import io
+import re
 
 import pytest
 from django.core.management import call_command
@@ -22,18 +23,28 @@ def test_system_checks_pass():
     call_command("check")
 
 
-def test_complete_analyst_journey(seeded, client):
-    # 1. Register (role is assigned by the server)
+def test_complete_analyst_journey(seeded, client, mailoutbox):
+    # 1. Register (role is assigned by the server), confirm the email, sign in
     response = client.post(
         reverse("accounts:register"),
         {
+            "first_name": "Sam",
             "username": "student",
             "email": "s@example.com",
             "password1": "Lean-and-secure-42",
             "password2": "Lean-and-secure-42",
+            "accept_terms": "on",
         },
     )
     assert response.status_code == 302
+    link = re.search(r"https?://testserver(/accounts/confirm-email/\S+)", mailoutbox[0].body).group(1)
+    assert client.post(link).status_code == 302
+    assert (
+        client.post(
+            reverse("accounts:login"), {"username": "s@example.com", "password": "Lean-and-secure-42"}
+        ).status_code
+        == 302
+    )
 
     # 2. Browse the library and a scenario
     assert client.get(reverse("threats:list")).status_code == 200

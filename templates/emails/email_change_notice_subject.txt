@@ -1,0 +1,2 @@
+{% autoescape off %}Your {{ site_name }} email address is changing
+{% endautoescape %}

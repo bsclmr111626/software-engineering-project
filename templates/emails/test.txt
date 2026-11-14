@@ -1,0 +1,4 @@
+{% autoescape off %}This is a test message from {{ site_name }}.
+
+If you can read it, email delivery from this deployment works.
+{% endautoescape %}

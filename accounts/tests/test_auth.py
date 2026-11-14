@@ -18,23 +18,28 @@ User = get_user_model()
 
 def register(client, **extra):
     data = {
+        "first_name": "New",
         "username": "newuser",
         "email": "new@example.com",
         "password1": "A-very-long-passphrase-42",
         "password2": "A-very-long-passphrase-42",
+        "accept_terms": "on",
     }
     data.update(extra)
     return client.post(reverse("accounts:register"), data)
 
 
 class TestRegistration:
-    def test_registration_creates_user_with_default_role_and_logs_in(self, client):
+    def test_registration_creates_an_unconfirmed_account_with_the_default_role(self, client, mailoutbox):
         response = register(client)
-        assert response.status_code == 302
+        assert response.status_code == 302 and response.url == reverse("accounts:check_email")
         user = User.objects.get(username="newuser")
         assert get_role(user) == Role.ANALYST
-        assert client.get(reverse("core:dashboard")).status_code == 200
+        assert user.profile.origin == "signup" and user.profile.email_verified_at is None
+        assert "_auth_user_id" not in client.session  # not signed in until the address is confirmed
         assert AuditEvent.objects.filter(action=AuditAction.REGISTER, actor=user).exists()
+        assert len(mailoutbox) == 1 and mailoutbox[0].to == ["new@example.com"]
+        assert "/accounts/confirm-email/" in mailoutbox[0].body
 
     def test_role_cannot_be_chosen_during_registration(self, client):
         register(client, role="admin", is_superuser="on", is_staff="on")
@@ -48,9 +53,12 @@ class TestRegistration:
         assert "password2" in response.context["form"].errors
         assert not User.objects.filter(username="newuser").exists()
 
-    def test_duplicate_email_is_rejected(self, client, analyst):
+    def test_duplicate_email_is_not_disclosed_and_the_owner_is_told(self, client, analyst, mailoutbox):
         response = register(client, email=analyst.email.upper())
-        assert "email" in response.context["form"].errors
+        assert response.status_code == 302 and response.url == reverse("accounts:check_email")
+        assert not User.objects.filter(username="newuser").exists()
+        assert len(mailoutbox) == 1 and mailoutbox[0].to == [analyst.email]
+        assert "already belongs to an account" in mailoutbox[0].body
 
     def test_password_is_hashed(self, client):
         register(client)

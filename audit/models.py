@@ -28,6 +28,18 @@ class AuditAction(models.TextChoices):
     PREFERENCES_UPDATE = "preferences_update", "Updated preferences"
     SESSIONS_REVOKED = "sessions_revoked", "Signed out other sessions"
     DATA_EXPORT = "data_export", "Downloaded personal data"
+    SIGNUP_REQUEST = "signup_request", "Submitted the sign-up form"
+    VERIFICATION_SENT = "verification_sent", "Sent an email confirmation link"
+    EMAIL_VERIFIED = "email_verified", "Confirmed email address"
+    EMAIL_CHANGE_REQUEST = "email_change_request", "Requested an email change"
+    PASSWORD_RESET_REQUEST = "password_reset_request", "Requested a password reset"
+    PASSWORD_RESET = "password_reset", "Reset password with an emailed link"
+    INVITATION_CREATE = "invitation_create", "Invited a user"
+    INVITATION_RESEND = "invitation_resend", "Resent an invitation"
+    INVITATION_REVOKE = "invitation_revoke", "Revoked an invitation"
+    INVITATION_ACCEPT = "invitation_accept", "Accepted an invitation"
+    USER_SUSPEND = "user_suspend", "Suspended a user"
+    USER_REACTIVATE = "user_reactivate", "Reactivated a user"
 
 
 class AppendOnlyQuerySet(models.QuerySet):

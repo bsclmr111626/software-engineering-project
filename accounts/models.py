@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Lower
+from django.utils import timezone
 
 
 class Role(models.TextChoices):
@@ -8,12 +10,28 @@ class Role(models.TextChoices):
     VIEWER = "viewer", "Viewer"
 
 
+class AccountOrigin(models.TextChoices):
+    ADMIN = "admin", "Created by an administrator"
+    SIGNUP = "signup", "Self-registration"
+    INVITATION = "invitation", "Invitation"
+
+
 class Profile(models.Model):
-    """Stores the CodeGuard role of a user (one profile per user), plus the
-    optional professional details shown on their profile page."""
+    """Stores the CodeGuard role of a user (one profile per user), the state
+    of their email address, and the optional professional details shown on
+    their profile page.
+
+    ``email_verified_at`` is set only when the person opened a link sent to
+    ``user.email`` (verification, invitation or password reset). Self-registered
+    accounts cannot sign in until it is set. ``pending_email`` holds a new
+    address until its confirmation link is opened.
+    """
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.VIEWER)
+    origin = models.CharField(max_length=12, choices=AccountOrigin.choices, default=AccountOrigin.ADMIN)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    pending_email = models.EmailField(blank=True)
     job_title = models.CharField(max_length=80, blank=True)
     team = models.CharField(max_length=80, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -26,6 +44,14 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"{self.user.get_username()} ({self.get_role_display()})"
+
+    @property
+    def email_verified(self):
+        return self.email_verified_at is not None
+
+    @property
+    def must_verify_before_sign_in(self):
+        return self.origin == AccountOrigin.SIGNUP and not self.email_verified
 
 
 class ColorMode(models.TextChoices):
@@ -123,3 +149,57 @@ class UserPreference(models.Model):
 
     def __str__(self):
         return f"Preferences of {self.user.get_username()}"
+
+
+class Invitation(models.Model):
+    """An administrator's invitation to create an account with a given role.
+
+    Only a SHA-256 hash of the token is stored, so the database alone cannot
+    be used to accept an invitation. A link works once (``accepted_at``), can
+    be revoked, and expires at ``expires_at``. Resending replaces the token,
+    which invalidates the previous link.
+    """
+
+    email = models.EmailField()
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.ANALYST)
+    token_hash = models.CharField(max_length=64, unique=True)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="invitations_sent"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="invitation"
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"),
+                condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True),
+                name="one_open_invitation_per_email",
+                violation_error_message="There is already an open invitation for this address.",
+            ),
+            models.CheckConstraint(condition=models.Q(role__in=Role.values), name="invitation_role_valid"),
+        ]
+
+    def __str__(self):
+        return f"Invitation for {self.email} ({self.get_role_display()})"
+
+    @property
+    def status(self):
+        if self.accepted_at:
+            return "accepted"
+        if self.revoked_at:
+            return "revoked"
+        if self.expires_at <= timezone.now():
+            return "expired"
+        return "pending"
+
+    @property
+    def is_open(self):
+        return self.status == "pending"

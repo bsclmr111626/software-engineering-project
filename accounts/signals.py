@@ -16,6 +16,7 @@ from .preferences import (
     describe_agent,
     preferences_for,
 )
+from .throttling import canonical_username
 
 
 @receiver(post_save, sender=get_user_model())
@@ -42,6 +43,8 @@ def on_logout(sender, request, user, **kwargs):
 
 @receiver(user_login_failed)
 def on_login_failed(sender, credentials, request=None, **kwargs):
-    # Only the attempted username is kept; the password is never recorded.
-    username = str(credentials.get("username", ""))[:150]
+    # Only the attempted username is kept; the password is never recorded. An
+    # email address is stored as the account's username so the per-account
+    # limit counts it (throttling.canonical_username).
+    username = canonical_username(str(credentials.get("username", "")))[:150]
     record_event(None, AuditAction.LOGIN_FAILED, request=request, attempted_username=username)

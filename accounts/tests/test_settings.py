@@ -75,8 +75,9 @@ def test_email_change_requires_the_current_password(analyst_client, analyst):
     assert analyst.email == "alice@example.com"
     assert analyst_client.post(url, {"email": "New@Example.com", "current_password": PASSWORD}).status_code == 302
     analyst.refresh_from_db()
-    assert analyst.email == "new@example.com"
-    assert AuditEvent.objects.filter(action=AuditAction.EMAIL_CHANGE, actor=analyst).exists()
+    assert analyst.email == "alice@example.com"  # unchanged until the new address is confirmed
+    assert analyst.profile.pending_email == "new@example.com"
+    assert AuditEvent.objects.filter(action=AuditAction.EMAIL_CHANGE_REQUEST, actor=analyst).exists()
 
 
 def test_email_change_rejects_an_address_in_use(analyst_client, other_analyst):

@@ -1,0 +1,20 @@
+{% extends "layouts/auth.html" %}
+{% block title %}{% if invalid %}Link not valid{% else %}Confirm your email{% endif %}{% endblock %}
+{% block content %}
+{% if invalid %}
+<h1>This link is not valid</h1>
+<p>It may have expired, already been used, or been replaced by a newer link. Request a new one and use the most recent email.</p>
+<div class="d-flex flex-wrap gap-2 mt-3">
+  <a class="btn btn-primary" href="{% url 'accounts:resend_verification' %}">Send a new link</a>
+  <a class="btn btn-outline-secondary" href="{% url 'accounts:login' %}">Sign in</a>
+</div>
+{% else %}
+<h1>Confirm your email</h1>
+<p>Confirm <strong>{{ email }}</strong> as the email address of the CodeGuard account <code>{{ account.get_username }}</code>.</p>
+<form method="post" data-loading>
+  {% csrf_token %}
+  <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">Confirm email address</span><span class="btn-loading">Confirming…</span></button>
+</form>
+<p class="small text-muted mt-3 mb-0">Not you? Close this page; nothing changes unless you confirm.</p>
+{% endif %}
+{% endblock %}
