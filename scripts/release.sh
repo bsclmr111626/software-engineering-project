@@ -65,6 +65,8 @@ rm -f "$rehearsal" "$rehearsal-wal" "$rehearsal-shm"
 echo "== 6/8 Migrate and seed reference data"
 python manage.py migrate --noinput
 python manage.py seed_codeguard
+# Accounts their owners closed more than CODEGUARD_ACCOUNT_DELETION_DAYS ago.
+python manage.py purge_closed_accounts
 
 echo "== 7/8 Collect static files"
 python manage.py collectstatic --noinput

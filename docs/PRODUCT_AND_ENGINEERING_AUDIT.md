@@ -320,6 +320,42 @@ Phase 1, in the repository, **not yet deployed**:
 
 Still open from Phase 1: local fonts. P1-7 (account closure) is Phase 2.
 
+Phase 1 was deployed on 2026-11-14. Email delivery is **not configured on the live instance
+yet**, so no flow that sends email has been proven there; invitations work only by copying the
+link. The client-IP header is also still unset on the live instance (it reads `REMOTE_ADDR`).
+
+Phase 2 and smaller items, in the repository, **not yet deployed**:
+
+| Finding | State |
+|---|---|
+| P1-7 account closure | Self-service closure with password and confirmation; inactive at once, sessions ended, deleted with owned work after `CODEGUARD_ACCOUNT_DELETION_DAYS` by `purge_closed_accounts` (run at each release). Administrators can reopen before then. Superusers and the only administrator are refused. Shared reports are deleted with their owner; the confirmation page says how many. Transferring them to a workspace waits for Phase 3 |
+| Audit integrity | SQLite triggers refuse edits to audit rows and deletion of rows younger than 30 days, reinstalled after every migrate. Guards against mistakes, not against someone with full database access |
+| Unique email index | Reinstalled after every migrate as well, because SQLite table rebuilds drop it |
+| Crawlers and previews | `/robots.txt` (public pages only), `/favicon.ico`, Open Graph metadata |
+| Dependency audit | CI now also runs weekly |
+
+Not done from Phase 2, because they need working email: an emailed unlock link for locked
+accounts. Not done by choice: raising HSTS beyond one hour (set `DJANGO_HSTS_SECONDS` on the
+server once HTTPS has been stable; it is hard to undo).
+
+### Signed-in pages on the live site (checked 2026-11-14, read-only, administrator account)
+
+Automated checks over 31 pages (every sidebar and settings page, plus the legal pages):
+
+- All returned 200 in 0.4 to 0.9 seconds; no browser console errors.
+- Each has exactly one main heading; no form control without a label, no image without
+  alternative text, no duplicate element ids.
+- At phone width (375 px) the five pages measured (overview, users, new simulation, audit table,
+  privacy notice) do not scroll sideways. The settings navigation is wider than the screen there
+  and scrolls within its own strip.
+- A new account sees an empty state on seven pages (overview, results, risk analysis,
+  remediation, reports, notifications, new simulation). Each explains itself, but nothing walks a
+  first-time user through a first simulation; that onboarding gap (P2) stands.
+
+Not done: a visual review (screenshots could not be taken in this session), the analyst and
+viewer roles, pages that need data (a report, a comparison, a remediation item), dark theme, and
+screen-reader testing.
+
 ## 14. What this audit could not verify
 
 - Anything behind sign-in on the live site, including which accounts exist.

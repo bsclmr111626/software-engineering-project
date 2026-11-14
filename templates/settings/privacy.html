@@ -23,4 +23,9 @@
   <p class="cg-section-help">A JSON file with your account details, preferences, scenarios, simulation runs, remediation items and audit events. The download itself is recorded in the audit log.</p>
   <a class="btn btn-outline-secondary" href="{% url 'settings:export_data' %}"><i class="bi bi-download" aria-hidden="true"></i> Download my data</a>
 </section>
+<section class="cg-settings-section" aria-labelledby="close-h">
+  <h2 id="close-h">Close your account</h2>
+  <p class="cg-section-help">Closing signs you out everywhere and stops sign-in immediately. After {{ deletion_days }} days the account and everything you own are deleted for good. Download your data first if you want a copy.</p>
+  <a class="btn btn-outline-danger" href="{% url 'settings:close_account' %}">Close my account</a>
+</section>
 {% endblock %}

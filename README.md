@@ -187,6 +187,7 @@ Settings are read from environment variables. A local `.env` file is loaded auto
 | `CODEGUARD_CONTACT_EMAIL` | empty | Contact address shown on the contact, privacy and terms pages and in emails |
 | `CODEGUARD_ADMIN_EMAILS` | empty | Comma-separated addresses that receive server error emails when DEBUG is off |
 | `CODEGUARD_EMAIL_VERIFICATION_HOURS`, `CODEGUARD_INVITATION_DAYS` | `48`, `7` | Lifetime of email confirmation links and invitations |
+| `CODEGUARD_ACCOUNT_DELETION_DAYS` | `14` | Days between a user closing their account and `purge_closed_accounts` deleting it |
 | `DJANGO_DB_PATH` | `./db.sqlite3` | SQLite file location |
 | `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SECURE_COOKIES`, `DJANGO_HSTS_SECONDS`, `DJANGO_BEHIND_PROXY` | secure when DEBUG is false | HTTPS hardening |
 

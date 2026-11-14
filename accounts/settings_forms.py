@@ -75,6 +75,31 @@ class EmailChangeForm(BootstrapFormMixin, forms.Form):
         return password
 
 
+class CloseAccountForm(BootstrapFormMixin, forms.Form):
+    """Closing an account needs the current password and an explicit tick,
+    so neither an unattended session nor a stray click can do it."""
+
+    current_password = forms.CharField(
+        label="Current password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
+    confirm = forms.BooleanField(
+        label="I understand that my account will be closed now and deleted with my work after the waiting period",
+        error_messages={"required": "Tick the box to confirm."},
+    )
+
+    def __init__(self, *args, user, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        password = self.cleaned_data["current_password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("The password is incorrect.")
+        return password
+
+
 class PreferenceForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = UserPreference

@@ -187,6 +187,10 @@ EMAIL_TIMEOUT = 10
 PASSWORD_RESET_TIMEOUT = 60 * 60  # reset links expire after one hour
 CODEGUARD_EMAIL_VERIFICATION_HOURS = int(os.environ.get("CODEGUARD_EMAIL_VERIFICATION_HOURS", "48"))
 CODEGUARD_INVITATION_DAYS = int(os.environ.get("CODEGUARD_INVITATION_DAYS", "7"))
+# A closed account is deleted this many days after its owner closed it (accounts/closure.py).
+CODEGUARD_ACCOUNT_DELETION_DAYS = int(os.environ.get("CODEGUARD_ACCOUNT_DELETION_DAYS", "14"))
+if CODEGUARD_ACCOUNT_DELETION_DAYS < 1:
+    raise ImproperlyConfigured("CODEGUARD_ACCOUNT_DELETION_DAYS must be at least 1.")
 # Shown on the contact, privacy and terms pages and in emails. Empty hides it.
 CODEGUARD_CONTACT_EMAIL = os.environ.get("CODEGUARD_CONTACT_EMAIL", "").strip()
 

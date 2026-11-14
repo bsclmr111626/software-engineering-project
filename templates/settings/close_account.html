@@ -1,0 +1,41 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Close your account · Settings{% endblock %}
+{% block settings_title %}Close your account{% endblock %}
+{% block settings_body %}
+<header>
+  <p class="small mb-1"><a href="{% url 'settings:privacy' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Privacy and data</a></p>
+  <h1>Close your account</h1>
+  <p>Closing takes effect immediately. Deletion follows after {{ deletion_days }} days and cannot be undone.</p>
+</header>
+{% if refusal %}
+<div class="cg-note"><i class="bi bi-info-circle" aria-hidden="true"></i><p>{{ refusal }}</p></div>
+{% else %}
+<section class="cg-settings-section" aria-labelledby="what-h">
+  <h2 id="what-h">What happens</h2>
+  <dl class="cg-ledger">
+    <dt>Now</dt><dd>You are signed out on every device and can no longer sign in. Nothing is deleted yet, and an administrator can reopen the account.</dd>
+    <dt>After {{ deletion_days }} days</dt><dd>Deleted for good: your account, {{ counts.runs }} simulation run{{ counts.runs|pluralize }} and {{ counts.runs|pluralize:"its,their" }} report{{ counts.runs|pluralize }}{% if counts.shared_runs %} (including {{ counts.shared_runs }} that other people can currently read){% endif %}, {{ counts.scenarios }} scenario{{ counts.scenarios|pluralize }} you own, {{ counts.remediation }} remediation item{{ counts.remediation|pluralize }} and your preferences.</dd>
+    <dt>Kept</dt><dd>Activity log entries stay, with your username, until the retention period removes them.</dd>
+  </dl>
+  <p class="mt-3"><a class="btn btn-outline-secondary" href="{% url 'settings:export_data' %}"><i class="bi bi-download" aria-hidden="true"></i> Download my data first</a></p>
+</section>
+<section class="cg-settings-section" aria-labelledby="confirm-h">
+  <h2 id="confirm-h">Confirm</h2>
+  <form method="post" novalidate data-loading>
+    {% csrf_token %}
+    {% include "components/field.html" with field=form.current_password %}
+    <div class="cg-field">
+      <div class="form-check">
+        {{ form.confirm }}
+        <label class="form-check-label" for="{{ form.confirm.id_for_label }}">{{ form.confirm.label }}</label>
+      </div>
+      {% if form.confirm.errors %}<div class="invalid-feedback d-block" id="{{ form.confirm.auto_id }}_error">{% for e in form.confirm.errors %}{{ e }}{% endfor %}</div>{% endif %}
+    </div>
+    <div class="cg-form-actions">
+      <button class="btn btn-danger" type="submit"><span class="btn-label">Close my account</span><span class="btn-loading">Closing…</span></button>
+      <a class="btn btn-outline-secondary" href="{% url 'settings:privacy' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

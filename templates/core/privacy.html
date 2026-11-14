@@ -40,7 +40,8 @@
 <ul>
   <li>Download everything stored about you from <a href="{% url 'settings:privacy' %}">Settings &rsaquo; Privacy and data</a>.</li>
   <li>Correct your name and details in <a href="{% url 'settings:profile' %}">Settings &rsaquo; Profile</a> and your email in <a href="{% url 'settings:account' %}">Settings &rsaquo; Account</a>.</li>
-  <li>To have your account and data deleted, ask the administrator{% if contact_email %} at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{% endif %}. Self-service deletion is not available yet.</li>
+  <li>Close your account in <a href="{% url 'settings:privacy' %}">Settings &rsaquo; Privacy and data</a>. Sign-in stops at once; after {{ deletion_days }} days the account and everything you own (scenarios, simulations, reports including shared ones, remediation items, preferences) are deleted. Until then an administrator can reopen it.</li>
+  <li>Activity log entries are kept after deletion with the username they were recorded under, until the retention period removes them.</li>
 </ul>
 <p class="small text-muted">Last updated {{ updated|date:"j F Y" }}.</p>
 </div>

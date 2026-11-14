@@ -6,6 +6,11 @@
   {% theme_init_script %}
   <title>{% block title %}CodeGuard{% endblock %} · CodeGuard</title>
   <meta name="description" content="{% block meta_description %}CodeGuard models how a compromise could propagate through the stages of a software supply chain, and how much risk security controls remove.{% endblock %}">
+  <meta property="og:site_name" content="CodeGuard">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{% block og_title %}CodeGuard: software supply chain risk simulation{% endblock %}">
+  <meta property="og:description" content="Model how a compromise could spread from a developer workstation to production, and how much risk each security control removes.">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -40,6 +40,8 @@ class AuditAction(models.TextChoices):
     INVITATION_ACCEPT = "invitation_accept", "Accepted an invitation"
     USER_SUSPEND = "user_suspend", "Suspended a user"
     USER_REACTIVATE = "user_reactivate", "Reactivated a user"
+    ACCOUNT_CLOSE = "account_close", "Closed their account"
+    ACCOUNT_DELETE = "account_delete", "Deleted a closed account"
 
 
 class AppendOnlyQuerySet(models.QuerySet):

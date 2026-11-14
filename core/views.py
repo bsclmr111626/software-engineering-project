@@ -8,6 +8,7 @@ from django.db import connection
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import loader
+from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import requires_csrf_token
@@ -163,10 +164,33 @@ def methodology(request):
     )
 
 
+# --- Files crawlers and browsers ask for by convention ---------------------------
+
+ROBOTS_TXT = """User-agent: *
+Allow: /$
+Allow: /help/
+Allow: /privacy/
+Allow: /terms/
+Allow: /contact/
+Disallow: /
+"""
+
+
+@require_GET
+def robots_txt(request):
+    """Only the public pages are worth indexing; everything else needs sign-in."""
+    return HttpResponse(ROBOTS_TXT, content_type="text/plain; charset=utf-8")
+
+
+@require_GET
+def favicon(request):
+    return redirect(static("images/favicon.svg"), permanent=True)
+
+
 # --- Legal and contact pages ----------------------------------------------------
 
 # Change when the wording of the privacy notice or terms changes.
-LEGAL_UPDATED = date(2026, 11, 12)
+LEGAL_UPDATED = date(2026, 11, 14)
 
 
 def _public_page(request, template):
@@ -178,6 +202,7 @@ def _public_page(request, template):
             "contact_email": settings.CODEGUARD_CONTACT_EMAIL,
             "email_provider": "Brevo" if settings.EMAIL_BACKEND == "core.email.BrevoEmailBackend" else "",
             "updated": LEGAL_UPDATED,
+            "deletion_days": settings.CODEGUARD_ACCOUNT_DELETION_DAYS,
         },
     )
 

@@ -32,6 +32,10 @@ class Profile(models.Model):
     origin = models.CharField(max_length=12, choices=AccountOrigin.choices, default=AccountOrigin.ADMIN)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     pending_email = models.EmailField(blank=True)
+    # Set when the person closed their own account. The account is inactive
+    # from then on and is deleted after CODEGUARD_ACCOUNT_DELETION_DAYS unless
+    # an administrator reactivates it (accounts/closure.py).
+    closed_at = models.DateTimeField(null=True, blank=True)
     job_title = models.CharField(max_length=80, blank=True)
     team = models.CharField(max_length=80, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

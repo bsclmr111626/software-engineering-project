@@ -19,6 +19,7 @@ urlpatterns = [
     path("notifications/", views.notifications, name="notifications"),
     path("privacy/", views.privacy, name="privacy"),
     path("privacy/export.json", views.export_data, name="export_data"),
+    path("privacy/close-account/", views.close_account, name="close_account"),
     path("security/", views.security, name="security"),
     path("sessions/", views.sessions, name="sessions"),
     path("sessions/revoke/", views.revoke_sessions, name="revoke_sessions"),

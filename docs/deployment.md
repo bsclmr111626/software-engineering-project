@@ -134,6 +134,14 @@ Test a restore on a spare machine periodically; an untested backup is not a back
 - **Audit events** grow without bound. Keep them as long as your policy requires, then run, for
   example monthly: `python manage.py purge_audit_events --days 365`. It refuses less than 30
   days, supports `--dry-run`, and records its own run in the audit log.
+- **Closed accounts.** A user can close their own account (Settings > Privacy and data). It is
+  inactive at once and deleted, with everything it owns, by `python manage.py
+  purge_closed_accounts` once `CODEGUARD_ACCOUNT_DELETION_DAYS` (default 14) have passed.
+  `scripts/release.sh` runs the command at every release; schedule it as well if releases are
+  rare. Reactivating the user in Settings > Users before then cancels the deletion.
+- **Audit protection.** After every `migrate`, SQLite triggers are (re)installed that refuse
+  edits to audit rows and deletion of rows younger than 30 days (`audit/integrity.py`). They stop
+  mistakes and casual tampering; someone with full database access can still remove them.
 - **Simulation runs** and **remediation items** belong to users and are deleted with the user.
   There is no automatic expiry, because reports are the product's record of past assessments.
 - Audit events store usernames, object identifiers and client IP addresses. Include them in your

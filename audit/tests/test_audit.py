@@ -141,3 +141,51 @@ class TestClientIp:
         other = client.post(url, {"username": "someone", "password": "wrong"}, HTTP_X_REAL_IP="203.0.113.6")
         assert "Too many failed sign-in attempts" not in other.content.decode()
         assert AuditEvent.objects.filter(ip_address="203.0.113.5").count() >= 20
+
+
+class TestDatabaseProtection:
+    """audit/integrity.py: the database itself refuses to rewrite audit history."""
+
+    def test_protections_are_installed(self, db):
+        from audit import integrity
+
+        assert integrity.installed() == {
+            "audit_event_no_update",
+            "audit_event_no_early_delete",
+            "accounts_user_email_ci_unique",
+        }
+
+    def test_raw_sql_cannot_edit_an_event(self, analyst):
+        from django.db import IntegrityError, connection, transaction
+
+        event = record_event(analyst, AuditAction.LOGIN)
+        for sql in (
+            "UPDATE audit_auditevent SET action = 'logout' WHERE id = %s",
+            "UPDATE audit_auditevent SET actor_username = 'someone' WHERE id = %s",
+            "UPDATE audit_auditevent SET ip_address = '1.2.3.4' WHERE id = %s",
+        ):
+            with pytest.raises(IntegrityError, match="append-only"), transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(sql, [event.pk])
+        assert AuditEvent.objects.get(pk=event.pk).action == AuditAction.LOGIN
+
+    def test_raw_sql_cannot_delete_a_recent_event(self, analyst):
+        from django.db import IntegrityError, connection, transaction
+
+        event = record_event(analyst, AuditAction.LOGIN)
+        with pytest.raises(IntegrityError, match="at least 30 days"), transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM audit_auditevent WHERE id = %s", [event.pk])
+        assert AuditEvent.objects.filter(pk=event.pk).exists()
+
+    def test_install_is_repeatable_and_restores_dropped_protection(self, db):
+        from django.db import connection
+
+        from audit import integrity
+
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TRIGGER audit_event_no_update")
+        assert "audit_event_no_update" not in integrity.installed()
+        integrity.install()
+        integrity.install()
+        assert "audit_event_no_update" in integrity.installed()

@@ -10,7 +10,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import HttpResponse
@@ -27,7 +27,7 @@ from remediation.models import RemediationItem
 from simulation.models import SimulationRun
 from threats.models import ThreatScenario
 
-from . import emails, lifecycle
+from . import closure, emails, lifecycle
 from . import settings_forms as forms
 from .models import ColorMode, Profile, Role
 from .permissions import admin_required, get_role
@@ -226,6 +226,36 @@ def privacy(request):
             "form": form,
             "shared_count": SimulationRun.objects.filter(user=request.user, is_shared=True).count(),
             "event_count": AuditEvent.objects.filter(actor=request.user).count(),
+            "deletion_days": settings.CODEGUARD_ACCOUNT_DELETION_DAYS,
+        },
+    )
+
+
+@login_required
+def close_account(request):
+    """Self-service account closure (accounts/closure.py). The account is
+    closed at once and deleted after the waiting period."""
+    user = request.user
+    refusal = closure.refusal(user)
+    form = None if refusal else forms.CloseAccountForm(request.POST or None, user=user)
+    if form is not None and request.method == "POST" and form.is_valid():
+        closure.close(request, user)
+        logout(request)
+        messages.success(
+            request,
+            f"Your account is closed. It will be deleted in {settings.CODEGUARD_ACCOUNT_DELETION_DAYS} days; "
+            "until then an administrator can reopen it.",
+        )
+        return redirect("core:landing")
+    return _render(
+        request,
+        "settings/close_account.html",
+        "privacy",
+        {
+            "form": form,
+            "refusal": refusal,
+            "counts": closure.owned_counts(user),
+            "deletion_days": settings.CODEGUARD_ACCOUNT_DELETION_DAYS,
         },
     )
 

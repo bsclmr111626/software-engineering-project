@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 from audit.models import AuditAction, AuditEvent
 from audit.services import client_ip, record_event
 
-from . import emails, invitations, lifecycle
+from . import closure, emails, invitations, lifecycle
 from .forms import AcceptInvitationForm, EmailForm, InvitationForm, RegistrationForm, RoleForm, UserFilterForm
 from .models import AccountOrigin, Invitation, Profile, Role
 from .permissions import admin_required, get_role, registration_open
@@ -297,6 +297,7 @@ def user_detail(request, user_id):
             target_role=get_role(target),
             roles=Role.choices,
             can_manage=target != request.user and not target.is_superuser,
+            deletion_date=closure.deletion_date(profile),
             events=AuditEvent.objects.filter(Q(actor=target) | Q(object_type="User", object_id=str(target.pk)))[:25],
         ),
     )
@@ -341,6 +342,7 @@ def reactivate_user(request, user_id):
     if not target.is_active:
         target.is_active = True
         target.save(update_fields=["is_active"])
+        closure.reopen(target)  # cancels a pending deletion if the owner had closed the account
         record_event(request.user, AuditAction.USER_REACTIVATE, target=target, request=request)
     messages.success(request, f"{target.get_username()} can sign in again.")
     return redirect("settings:user_detail", target.pk)

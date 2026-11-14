@@ -12,7 +12,7 @@
 <section class="cg-settings-section" aria-labelledby="details-h">
   <h2 id="details-h">Account</h2>
   <dl class="cg-ledger">
-    <dt>Status</dt><dd>{% if target.is_active %}Active{% else %}<span class="tag tag-strong">Suspended</span>{% endif %}</dd>
+    <dt>Status</dt><dd>{% if target.is_active %}Active{% elif profile.closed_at %}<span class="tag tag-strong">Closed by the user</span> on {{ profile.closed_at|date:"Y-m-d" }} · deleted with their work on or after {{ deletion_date|date:"Y-m-d" }} unless reactivated{% else %}<span class="tag tag-strong">Suspended</span>{% endif %}</dd>
     <dt>Email</dt><dd>{{ target.email|default:"Not set" }}{% if target.email %} · {% if profile.email_verified %}confirmed {{ profile.email_verified_at|date:"Y-m-d" }}{% else %}not confirmed{% endif %}{% endif %}</dd>
     {% if profile.pending_email %}<dt>Pending change</dt><dd>{{ profile.pending_email }}</dd>{% endif %}
     <dt>Role</dt><dd>{{ target_role|title }}</dd>

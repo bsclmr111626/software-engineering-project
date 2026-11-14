@@ -137,3 +137,19 @@ class TestLegalPages:
     def test_signed_in_users_see_the_app_layout(self, analyst_client):
         html = analyst_client.get(reverse("core:terms")).content.decode()
         assert "Terms of use" in html and "New simulation" in html
+
+
+class TestConventionalFiles:
+    def test_robots_txt_allows_only_public_pages(self, client):
+        response = client.get("/robots.txt")
+        assert response.status_code == 200 and response["Content-Type"].startswith("text/plain")
+        body = response.content.decode()
+        assert "Allow: /help/" in body and body.strip().endswith("Disallow: /")
+
+    def test_favicon_ico_redirects_to_the_icon(self, client):
+        response = client.get("/favicon.ico")
+        assert response.status_code == 301 and response.url.endswith("images/favicon.svg")
+
+    def test_pages_carry_link_preview_metadata(self, client):
+        html = client.get(reverse("core:landing")).content.decode()
+        assert 'property="og:title"' in html and 'property="og:description"' in html

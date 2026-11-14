@@ -37,6 +37,7 @@ variables win over `.env`. Booleans go through `env_bool()`: `1`, `true`, `yes`,
 | `CODEGUARD_ADMIN_EMAILS` | empty; comma-separated recipients of server error emails (DEBUG off) | yes (commented) |
 | `CODEGUARD_EMAIL_VERIFICATION_HOURS` | `48`; lifetime of email confirmation links | yes (commented) |
 | `CODEGUARD_INVITATION_DAYS` | `7`; lifetime of invitation links | yes (commented) |
+| `CODEGUARD_ACCOUNT_DELETION_DAYS` | `14`; days between a user closing their account and its deletion | yes (commented) |
 | `DJANGO_EMAIL_HOST` | `localhost` | yes (commented) |
 | `DJANGO_EMAIL_PORT` | `587` | yes (commented) |
 | `DJANGO_EMAIL_HOST_USER` | empty | yes (commented) |

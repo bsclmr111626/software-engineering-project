@@ -75,7 +75,7 @@
                 <span><a href="{% url 'settings:user_detail' u.pk %}"><strong>{{ u.get_full_name|default:u.get_username }}</strong></a>{% if u == user %} <span class="tag">you</span>{% endif %}{% if u.is_superuser %} <span class="tag">superuser</span>{% endif %}<span class="cg-cell-sub">@{{ u.get_username }}{% if u.email %} · {{ u.email }}{% endif %}</span></span>
               </div>
             </td>
-            <td class="small text-nowrap">{% if not u.is_active %}<span class="tag tag-strong">Suspended</span>{% elif not u.profile.email_verified %}<span class="tag">Email not confirmed</span>{% else %}Active{% endif %}</td>
+            <td class="small text-nowrap">{% if not u.is_active and u.profile.closed_at %}<span class="tag tag-strong">Closed</span>{% elif not u.is_active %}<span class="tag tag-strong">Suspended</span>{% elif not u.profile.email_verified %}<span class="tag">Email not confirmed</span>{% else %}Active{% endif %}</td>
             <td class="small text-nowrap">{{ u.date_joined|date:"Y-m-d" }}</td>
             <td>
               {% if u == user or u.is_superuser %}
