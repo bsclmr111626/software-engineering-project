@@ -65,14 +65,14 @@
           <ul class="dropdown-menu dropdown-menu-end">
             <li class="cg-menu-id">
               <span class="cg-avatar" aria-hidden="true">{{ user|display_initials }}</span>
-              <span><strong>{{ user.get_full_name|default:user.get_username }}</strong><span>{{ current_role|title }}{% if user.email %} · {{ user.email }}{% endif %}</span></span>
+              <span class="cg-menu-id-text"><strong>{{ user.get_full_name|default:user.get_username }}</strong><small>{{ current_role|title }}{% if user.profile.workspace %} · {{ user.profile.workspace.name }}{% endif %}</small>{% if user.email %}<small title="{{ user.email }}">{{ user.email }}</small>{% endif %}</span>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{% url 'settings:profile' %}"><i class="bi bi-person" aria-hidden="true"></i>Your profile</a></li>
             <li><a class="dropdown-item" href="{% url 'settings:index' %}"><i class="bi bi-gear" aria-hidden="true"></i>Settings</a></li>
             <li><a class="dropdown-item" href="{% url 'settings:appearance' %}"><i class="bi bi-circle-half" aria-hidden="true"></i>Appearance</a></li>
             <li><a class="dropdown-item" href="{% url 'settings:security' %}"><i class="bi bi-shield-lock" aria-hidden="true"></i>Password and security</a></li>
-            {% if user_is_admin %}<li><a class="dropdown-item" href="{% url 'settings:users' %}"><i class="bi bi-people" aria-hidden="true"></i>Users and roles</a></li>{% endif %}
+            {% if user_is_admin %}<li><a class="dropdown-item" href="{% url 'settings:users' %}"><i class="bi bi-people" aria-hidden="true"></i>Members and roles</a></li>{% endif %}
             <li><hr class="dropdown-divider"></li>
             <li>
               <form method="post" action="{% url 'accounts:logout' %}" class="cg-menu-form">
