@@ -21,6 +21,11 @@ urlpatterns = [
     path("privacy/export.json", views.export_data, name="export_data"),
     path("privacy/close-account/", views.close_account, name="close_account"),
     path("security/", views.security, name="security"),
+    path("security/two-step/", views.two_factor_setup, name="two_factor_setup"),
+    path("security/two-step/backup-codes/", views.backup_codes, name="backup_codes"),
+    path("security/two-step/backup-codes.txt", views.backup_codes_download, name="backup_codes_download"),
+    path("security/two-step/new-codes/", views.two_factor_codes, name="two_factor_codes"),
+    path("security/two-step/turn-off/", views.two_factor_disable, name="two_factor_disable"),
     path("sessions/", views.sessions, name="sessions"),
     path("sessions/revoke/", views.revoke_sessions, name="revoke_sessions"),
     path("organization/", views.organization, name="organization"),
@@ -33,4 +38,5 @@ urlpatterns = [
     path("users/<int:user_id>/suspend/", account_views.suspend_user, name="suspend_user"),
     path("users/<int:user_id>/reactivate/", account_views.reactivate_user, name="reactivate_user"),
     path("users/<int:user_id>/password-reset/", account_views.send_password_reset, name="send_password_reset"),
+    path("users/<int:user_id>/two-step-reset/", account_views.reset_two_factor, name="reset_two_factor"),
 ]

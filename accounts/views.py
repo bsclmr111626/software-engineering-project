@@ -4,20 +4,30 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.forms import PasswordResetForm
-from django.contrib.auth.views import PasswordChangeView, PasswordResetConfirmView, PasswordResetView
+from django.contrib.auth.views import LoginView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from audit.models import AuditAction, AuditEvent
 from audit.services import client_ip, record_event
 
-from . import closure, emails, invitations, lifecycle, workspaces
-from .forms import AcceptInvitationForm, EmailForm, InvitationForm, RegistrationForm, RoleForm, UserFilterForm
-from .models import AccountOrigin, Profile, Role
+from . import closure, emails, invitations, lifecycle, two_factor, workspaces
+from .forms import (
+    AcceptInvitationForm,
+    EmailForm,
+    InvitationForm,
+    RegistrationForm,
+    RoleForm,
+    ThrottledAuthenticationForm,
+    TwoFactorCodeForm,
+    UserFilterForm,
+)
+from .models import AccountOrigin, Profile, Role, TwoFactorDevice
 from .permissions import admin_required, get_role, registration_open
 from .preferences import page_size, preferences_for
 from .settings_views import settings_nav
@@ -179,6 +189,67 @@ def accept_invitation(request, token):
     return render(request, "registration/invitation.html", {"form": form, "invitation": invitation})
 
 
+# --- Signing in ----------------------------------------------------------------------
+
+
+class SignInView(LoginView):
+    """The password step. With two-step sign-in on, a right password does not
+    sign the person in: it starts the code step instead (accounts/two_factor.py)."""
+
+    authentication_form = ThrottledAuthenticationForm
+    redirect_authenticated_user = True
+
+    def form_valid(self, form):
+        user = form.get_user()
+        if two_factor.enabled(user):
+            two_factor.begin(self.request, user, self.get_success_url())
+            return redirect("accounts:two_factor")
+        return super().form_valid(form)
+
+
+def two_factor_challenge(request):
+    """The code step: a code from the authenticator app or a backup code."""
+    if request.user.is_authenticated:
+        return redirect("core:start")
+    data = two_factor.pending(request)
+    if data is None:
+        messages.info(request, "Sign in again to continue; the code step expires after a few minutes.")
+        return redirect("accounts:login")
+    user = get_user_model().objects.filter(pk=data["user_id"], is_active=True).first()
+    if user is None or user.password[-16:] != data["password"] or not two_factor.enabled(user):
+        two_factor.clear(request)
+        return redirect("accounts:login")
+    form = TwoFactorCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if two_factor.is_locked(user):
+            two_factor.clear(request)
+            record_event(user, AuditAction.LOGIN_THROTTLED, request=request, step="two_factor")
+            messages.error(
+                request,
+                f"Too many wrong codes. Wait {settings.CODEGUARD_LOGIN_LOCKOUT_MINUTES} minutes and sign in again.",
+            )
+            return redirect("accounts:login")
+        method = two_factor.verify(user, form.cleaned_data["code"])
+        if method is None:
+            record_event(user, AuditAction.TWO_FACTOR_FAILED, request=request)
+            form.add_error("code", "That code is not right, or it was already used. Try the newest code.")
+        else:
+            two_factor.clear(request)
+            login(request, user, backend=data["backend"])
+            if method == "backup":
+                left = two_factor.backup_codes_left(user)
+                record_event(user, AuditAction.BACKUP_CODE_USED, request=request, codes_left=left)
+                messages.warning(
+                    request,
+                    f"You signed in with a backup code. {left} left; make new ones in Settings > Password and security.",
+                )
+            target = data.get("next") or ""
+            if not url_has_allowed_host_and_scheme(target, {request.get_host()}, request.is_secure()):
+                target = reverse("core:start")
+            return redirect(target)
+    return render(request, "registration/two_factor.html", {"form": form})
+
+
 # --- Passwords ----------------------------------------------------------------------
 
 
@@ -249,7 +320,12 @@ def _admin_context(request, page, **extra):
 def user_list(request):
     workspace = workspace_of(request.user)
     filters = UserFilterForm(request.GET or None)
-    users = workspaces.members(workspace).select_related("profile").order_by("username")
+    users = (
+        workspaces.members(workspace)
+        .select_related("profile")
+        .annotate(two_step=Exists(TwoFactorDevice.objects.filter(user=OuterRef("pk"))))
+        .order_by("username")
+    )
     if filters.is_valid():
         q = filters.cleaned_data["q"].strip()
         if q:
@@ -307,6 +383,7 @@ def user_detail(request, user_id):
             target_role=get_role(target),
             roles=Role.choices,
             can_manage=target != request.user and not target.is_superuser,
+            two_factor_on=two_factor.enabled(target),
             deletion_date=closure.deletion_date(profile),
             events=AuditEvent.objects.filter(workspace=workspace_of(request.user)).filter(
                 Q(actor=target) | Q(object_type="User", object_id=str(target.pk))
@@ -381,6 +458,21 @@ def send_password_reset(request, user_id):
         email_hash=email_fingerprint(target.email), by_admin=True,
     )  # fmt: skip
     messages.success(request, f"A password reset link was sent to {target.email}.")
+    return redirect("settings:user_detail", target.pk)
+
+
+@admin_required
+@require_POST
+def reset_two_factor(request, user_id):
+    """For a member who lost their authenticator app and backup codes. They
+    sign in with their password alone afterwards and can set it up again."""
+    target, refused = _manageable(request, user_id)
+    if refused:
+        return refused
+    if two_factor.enabled(target):
+        two_factor.disable(target)
+        record_event(request.user, AuditAction.TWO_FACTOR_RESET, target=target, request=request)
+        messages.success(request, f"Two-step sign-in is off for {target.get_username()}. Ask them to set it up again.")
     return redirect("settings:user_detail", target.pk)
 
 

@@ -1,0 +1,14 @@
+{% autoescape off %}Hello {{ user.first_name|default:user.get_username }},
+
+{{ by }} assigned you a remediation item in the {{ item.workspace.name }} workspace:
+
+  {{ item.control.name }}
+  Scenario: {{ item.scenario_name }}
+  Status: {{ item.get_status_display }}{% if item.due_date %}
+  Due: {{ item.due_date|date:"j F Y" }}{% endif %}
+
+Open it here:
+{{ link }}
+
+You can switch off emails like this one in Settings > Notifications.
+{% endautoescape %}

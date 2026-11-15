@@ -10,6 +10,7 @@ which ones are new.
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -66,8 +67,10 @@ def _shared_reports(user, since):
 
 def _remediation(user):
     today = timezone.localdate()
+    # Due dates matter to whoever does the work: the assignee, or the owner
+    # while nobody is assigned.
     items = RemediationItem.objects.filter(
-        owner=user,
+        Q(assignee=user, workspace=workspace_of(user)) | Q(owner=user, assignee__isnull=True),
         status__in=ACTIVE_STATUSES,
         due_date__isnull=False,
         due_date__lte=today + timedelta(days=DUE_SOON_DAYS),
@@ -88,6 +91,33 @@ def _remediation(user):
             f"Remediation for {item.scenario_name} is {item.get_status_display().lower()}.",
             reverse("remediation:detail", args=[item.pk]),
             at,
+        )
+
+
+def _assignments(user, since):
+    events = (
+        AuditEvent.objects.filter(
+            action=AuditAction.REMEDIATION_ASSIGN,
+            workspace=workspace_of(user),
+            created_at__gte=since,
+            metadata__assignee=user.get_username(),
+        )
+        .exclude(actor=user)
+        .order_by("-created_at")[:LIMIT]
+    )
+    latest = {}
+    for event in events:
+        latest.setdefault(event.object_id, event)
+    items = RemediationItem.objects.filter(pk__in=list(latest), assignee=user).select_related("control")
+    for item in items:
+        event = latest[str(item.pk)]
+        yield Notification(
+            "remediation",
+            "bi-person-check",
+            f"{event.actor_username or 'A colleague'} assigned you {item.control.name}",
+            f"Remediation for {item.scenario_name}.",
+            reverse("remediation:detail", args=[item.pk]),
+            event.created_at,
         )
 
 
@@ -143,6 +173,7 @@ def notifications_for(user):
         found += _shared_reports(user, since)
     if preferences.notify_remediation_due:
         found += _remediation(user)
+        found += _assignments(user, since)
     if preferences.notify_account_security:
         found += _security(user, since)
     seen = preferences.notifications_seen_at

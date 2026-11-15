@@ -6,7 +6,8 @@
 <div class="cg-page-actions cg-no-print justify-content-end mb-4">
   <a class="btn btn-outline-secondary" href="{% url 'simulation:detail' run.id %}"><i class="bi bi-bezier2" aria-hidden="true"></i> Open interactive result</a>
   <a class="btn btn-outline-secondary" href="{% url 'simulation:export_run' run.id %}"><i class="bi bi-filetype-csv" aria-hidden="true"></i> Export CSV</a>
-  <button class="btn btn-primary" type="button" data-print hidden><i class="bi bi-printer" aria-hidden="true"></i> Print or save as PDF</button>
+  <button class="btn btn-outline-secondary" type="button" data-print hidden><i class="bi bi-printer" aria-hidden="true"></i> Print</button>
+  <a class="btn btn-primary" href="{% url 'simulation:export_pdf' run.id %}"><i class="bi bi-filetype-pdf" aria-hidden="true"></i> Download PDF</a>
 </div>
 
 <div class="cg-doc-layout">

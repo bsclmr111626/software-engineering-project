@@ -1,12 +1,13 @@
 {% extends "layouts/app.html" %}
+{% load codeguard_tags %}
 {% block title %}{{ item.control.name }} · Remediation{% endblock %}
 {% block breadcrumbs %}<li><a href="{% url 'remediation:plan' %}">Remediation</a></li><li aria-current="page">{{ item.control.name }}</li>{% endblock %}
 {% block content %}
 <div class="cg-page-head">
   <div>
-    <div class="cg-tags mb-3">{% include "components/status.html" with status=item.status label=item.get_status_display %}{% if verified_by %}<span class="tag tag-strong"><i class="bi bi-patch-check" aria-hidden="true"></i> Verified by a re-run</span>{% endif %}</div>
+    <div class="cg-tags mb-3">{% include "components/status.html" with status=item.status label=item.get_status_display %}{% if overdue %}<span class="tag tag-strong"><i class="bi bi-calendar-x" aria-hidden="true"></i> Overdue</span>{% endif %}{% if verified_by %}<span class="tag tag-strong"><i class="bi bi-patch-check" aria-hidden="true"></i> Verified by a re-run</span>{% endif %}<span class="tag">{% if item.is_shared %}<i class="bi bi-people" aria-hidden="true"></i> Visible to the workspace{% else %}<i class="bi bi-lock" aria-hidden="true"></i> Owner and assignee only{% endif %}</span></div>
     <h1>{{ item.control.name }}</h1>
-    <p class="lede">For the scenario <strong>{{ item.scenario_name }}</strong>. Added {{ item.created_at|date:"Y-m-d" }}{% if item.closed_at %}, closed {{ item.closed_at|date:"Y-m-d" }}{% endif %}.</p>
+    <p class="lede">For the scenario <strong>{{ item.scenario_name }}</strong>. Added by {% if item.owner == user %}you{% else %}{{ item.owner.get_full_name|default:item.owner.get_username }}{% endif %} on {{ item.created_at|date:"Y-m-d" }}{% if item.closed_at %}, closed {{ item.closed_at|date:"Y-m-d" }}{% endif %}.</p>
   </div>
 </div>
 <div class="cg-split">
@@ -16,19 +17,69 @@
       <div>
         <dl class="cg-ledger">
           <dt>Source report</dt>
-          <dd>{% if item.source_run %}<a href="{% url 'simulation:detail' item.source_run.pk %}">Run {{ item.source_run.short_id }}</a>, overall residual risk {{ item.baseline_risk }}{% else %}Deleted (overall residual risk was {{ item.baseline_risk }}){% endif %}</dd>
+          <dd>{% if item.source_run %}<a href="{% url 'simulation:detail' item.source_run.pk %}">Run {{ item.source_run.short_id }}</a>, overall residual risk {{ item.baseline_risk }}{% if item.source_run.user_id != user.pk and not item.source_run.is_shared %} <span class="text-muted small">(private to {{ item.owner.get_username }})</span>{% endif %}{% else %}Deleted (overall residual risk was {{ item.baseline_risk }}){% endif %}</dd>
           <dt>Expected reduction when added</dt>
           <dd><span class="cg-badge risk-low"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ item.expected_reduction }}</span> points of overall residual risk</dd>
           <dt>Verification</dt>
-          <dd class="mb-0">{% if verified_by %}Confirmed by <a href="{% url 'simulation:detail' verified_by.pk %}">run {{ verified_by.short_id }}</a> ({{ verified_by.created_at|date:"Y-m-d H:i" }} UTC) with the control enabled: overall residual risk {{ item.baseline_risk }} → {{ verified_by.residual_risk }}.{% else %}Not verified yet. Re-run <em>{{ item.scenario_name }}</em> with this control enabled to confirm the modeled effect.{% endif %}</dd>
+          <dd>{% if verified_by %}Confirmed by <a href="{% url 'simulation:detail' verified_by.pk %}">run {{ verified_by.short_id }}</a> ({{ verified_by.created_at|date:"Y-m-d H:i" }} UTC) with the control enabled: overall residual risk {{ item.baseline_risk }} → {{ verified_by.residual_risk }}.{% else %}Not verified yet. Re-run <em>{{ item.scenario_name }}</em> with this control enabled to confirm the modeled effect.{% endif %}</dd>
+          <dt>Evidence</dt>
+          <dd class="mb-0">{% if item.evidence_url %}<a href="{{ item.evidence_url }}" rel="noopener noreferrer nofollow" target="_blank">{{ item.evidence_url|truncatechars:70 }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span class="visually-hidden"> (opens in a new tab)</span></a>{% else %}<span class="text-muted">No link yet</span>{% endif %}</dd>
         </dl>
         <p class="small text-muted mt-3 mb-0">These are outputs of the CodeGuard model, not measurements of your environment. The control's assumptions and limitations are on its <a href="{% url 'threats:control_detail' item.control.slug %}">catalog page</a>.</p>
       </div>
     </section>
+
+    <section class="cg-section" aria-labelledby="activity-h">
+      <div class="cg-section-head"><h2 id="activity-h">History and comments</h2></div>
+      <ol class="cg-timeline">
+        {% for entry in activity %}
+        <li class="cg-timeline-item{% if entry.kind == 'comment' %} cg-timeline-comment{% endif %}">
+          <span class="cg-avatar cg-avatar-sm" aria-hidden="true">{% if entry.actor %}{{ entry.actor|display_initials }}{% else %}?{% endif %}</span>
+          <div>
+            <div class="small"><strong>{{ entry.actor_username|default:"Someone" }}</strong>
+              {% if entry.kind == "comment" %}commented{% elif entry.kind == "status" %}changed the status from <strong>{{ entry.old_value }}</strong> to <strong>{{ entry.new_value }}</strong>{% elif entry.kind == "assignee" %}{% if entry.new_value %}assigned it to <strong>{{ entry.new_value }}</strong>{% else %}removed the assignee{% endif %}{% elif entry.kind == "due_date" %}{% if entry.new_value %}set the due date to <strong>{{ entry.new_value }}</strong>{% else %}removed the due date{% endif %}{% elif entry.kind == "evidence" %}{% if entry.new_value %}linked evidence{% else %}removed the evidence link{% endif %}{% elif entry.kind == "sharing" %}{% if entry.new_value == "Workspace" %}shared it with the workspace{% else %}made it visible to the owner and assignee only{% endif %}{% else %}{{ entry.get_kind_display|lower }}{% endif %}
+              <span class="text-muted">· <time datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:"Y-m-d H:i" }}</time></span></div>
+            {% if entry.comment %}<div class="cg-comment-body">{{ entry.comment|linebreaksbr }}</div>{% endif %}
+          </div>
+        </li>
+        {% empty %}
+        <li class="text-muted">No history recorded.</li>
+        {% endfor %}
+      </ol>
+      <form method="post" action="{% url 'remediation:comment' item.pk %}" novalidate data-loading class="mt-3">
+        {% csrf_token %}
+        {% include "components/field.html" with field=comment_form.comment %}
+        <button class="btn btn-outline-secondary" type="submit"><span class="btn-label">Comment</span><span class="btn-loading">Posting…</span></button>
+      </form>
+    </section>
   </div>
   <div>
+    <section class="cg-panel mb-4" aria-labelledby="assign-h">
+      <div class="cg-panel-head"><h2 id="assign-h">Assignment</h2></div>
+      <div class="cg-panel-body">
+        {% if can_assign %}
+        <form method="post" action="{% url 'remediation:assign' item.pk %}" novalidate data-loading>
+          {% csrf_token %}
+          {% include "components/field.html" with field=assign_form.assignee %}
+          <div class="cg-field">
+            <div class="form-check">
+              {{ assign_form.is_shared }}
+              <label class="form-check-label" for="{{ assign_form.is_shared.id_for_label }}">{{ assign_form.is_shared.label }}</label>
+            </div>
+            <div class="form-text">{{ assign_form.is_shared.help_text }}</div>
+          </div>
+          <button class="btn btn-outline-secondary" type="submit"><span class="btn-label">Save assignment</span><span class="btn-loading">Saving…</span></button>
+        </form>
+        {% else %}
+        <dl class="cg-ledger">
+          <dt>Assigned to</dt><dd>{% if item.assignee %}{% if item.assignee == user %}You{% else %}{{ item.assignee.get_full_name|default:item.assignee.get_username }}{% endif %}{% else %}Nobody yet{% endif %}</dd>
+          <dt>Added by</dt><dd class="mb-0">{{ item.owner.get_full_name|default:item.owner.get_username }}</dd>
+        </dl>
+        {% endif %}
+      </div>
+    </section>
     <section class="cg-panel" aria-labelledby="update-h">
-      <div class="cg-panel-head"><h2 id="update-h">Status and notes</h2></div>
+      <div class="cg-panel-head"><h2 id="update-h">Status and details</h2></div>
       <div class="cg-panel-body">
         {% if can_edit %}
         <form method="post" novalidate data-loading>
@@ -41,6 +92,7 @@
           <dt>Due</dt><dd>{{ item.due_date|date:"Y-m-d"|default:"—" }}</dd>
           <dt>Notes</dt><dd class="mb-0">{{ item.note|default:"—"|linebreaksbr }}</dd>
         </dl>
+        <p class="small text-muted mt-3 mb-0">Only the person who added it, its assignee or an administrator can change it.</p>
         {% endif %}
       </div>
     </section>

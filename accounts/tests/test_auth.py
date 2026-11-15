@@ -245,21 +245,23 @@ class TestLoginThrottling:
         assert "Too many" in self.login(client, ip="10.9.9.9").content.decode()
         assert self.login(client, ip="10.0.0.2").status_code == 302
 
-    def test_admin_site_sign_in_has_the_same_limit(self, client, db):
-        """/admin/login/ uses its own form; it must not be a way around the lockout."""
+    def test_admin_site_sign_in_is_not_a_way_around_the_limit(self, client, db):
+        """/admin/login/ sends everyone to the throttled sign-in page and never signs anyone in itself."""
         get_user_model().objects.create_superuser("root", "root@example.com", PASSWORD)
         url = reverse("admin:login")
-        for _ in range(5):
-            client.post(url, {"username": "root", "password": "wrong-password"}, REMOTE_ADDR="10.0.0.7")
         response = client.post(url, {"username": "root", "password": PASSWORD}, REMOTE_ADDR="10.0.0.7")
-        assert response.status_code == 200
-        assert "Too many failed sign-in attempts" in response.content.decode()
+        assert response.status_code == 302 and response.url.startswith(reverse("accounts:login"))
         assert "_auth_user_id" not in client.session
 
     def test_admin_site_still_signs_in_staff(self, client, db):
         get_user_model().objects.create_superuser("root", "root@example.com", PASSWORD)
-        response = client.post(reverse("admin:login"), {"username": "root", "password": PASSWORD})
-        assert response.status_code == 302
+        response = client.post(
+            reverse("accounts:login") + "?next=/admin/", {"username": "root", "password": PASSWORD, "next": "/admin/"}
+        )
+        assert response.status_code == 302 and response.url == "/admin/"
+        assert client.get("/admin/").status_code == 200
+        # Already signed in: the admin sign-in page goes straight on.
+        assert client.get(reverse("admin:login") + "?next=/admin/").url == "/admin/"
 
 
 class TestRegistrationPolicy:

@@ -27,7 +27,7 @@ from remediation.models import RemediationItem
 from simulation.models import SimulationRun
 from threats.models import ThreatScenario
 
-from . import closure, emails, lifecycle
+from . import closure, emails, lifecycle, two_factor
 from . import settings_forms as forms
 from .models import ColorMode, Profile, Role, Workspace
 from .permissions import admin_required, get_role
@@ -286,6 +286,8 @@ def export_data(request):
             "email_verified_at": _iso(getattr(getattr(user, "profile", None), "email_verified_at", None)),
             "pending_email": getattr(getattr(user, "profile", None), "pending_email", ""),
             "account_origin": getattr(getattr(user, "profile", None), "origin", ""),
+            # Whether it is on, never the key or the backup codes.
+            "two_step_sign_in": two_factor.enabled(user),
         },
         "preferences": {
             field.name: getattr(preferences, field.name)
@@ -347,8 +349,14 @@ def security(request):
                 AuditAction.PASSWORD_CHANGE,
                 AuditAction.EMAIL_CHANGE,
                 AuditAction.SESSIONS_REVOKED,
+                AuditAction.TWO_FACTOR_ENABLE,
+                AuditAction.TWO_FACTOR_DISABLE,
+                AuditAction.TWO_FACTOR_FAILED,
+                AuditAction.BACKUP_CODES_CREATE,
+                AuditAction.BACKUP_CODE_USED,
             ],
         )
+        | Q(action=AuditAction.TWO_FACTOR_RESET, object_type="User", object_id=str(request.user.pk))
         | Q(action__in=[AuditAction.LOGIN_FAILED, AuditAction.LOGIN_THROTTLED], metadata__attempted_username=username)
     )[:15]
     last_password_change = (
@@ -363,8 +371,131 @@ def security(request):
         {
             "events": sign_ins,
             "last_password_change": last_password_change,
+            "two_factor": two_factor.device_for(request.user),
+            "backup_codes_left": two_factor.backup_codes_left(request.user),
             "lockout_failures": settings.CODEGUARD_LOGIN_MAX_FAILURES,
             "lockout_minutes": settings.CODEGUARD_LOGIN_LOCKOUT_MINUTES,
+        },
+    )
+
+
+def _sign_out_other_sessions(request):
+    preferences = preferences_for(request.user)
+    preferences.session_epoch += 1
+    preferences.save(update_fields=["session_epoch", "updated_at"])
+    request.session[SESSION_EPOCH_KEY] = preferences.session_epoch  # this session stays signed in
+
+
+def _show_new_codes(request, codes):
+    request.session[two_factor.CODES_KEY] = codes
+    return redirect("settings:backup_codes")
+
+
+@login_required
+def two_factor_setup(request):
+    """Turning two-step sign-in on. The key lives in the session until a code
+    from the app proves it was set up, so an abandoned attempt changes nothing."""
+    if two_factor.enabled(request.user):
+        return redirect("settings:security")
+    secret = request.session.get(two_factor.SETUP_KEY)
+    if not secret:
+        secret = request.session[two_factor.SETUP_KEY] = two_factor.new_secret()
+    form = forms.TwoFactorSetupForm(request.POST or None, user=request.user, secret=secret)
+    if request.method == "POST" and form.is_valid():
+        _, codes = two_factor.enable(request.user, secret, form.step)
+        request.session.pop(two_factor.SETUP_KEY, None)
+        _sign_out_other_sessions(request)
+        record_event(request.user, AuditAction.TWO_FACTOR_ENABLE, request=request)
+        messages.success(request, "Two-step sign-in is on. Your other sessions were signed out.")
+        return _show_new_codes(request, codes)
+    uri = two_factor.provisioning_uri(request.user, secret)
+    return _render(
+        request,
+        "settings/two_factor_setup.html",
+        "security",
+        {"form": form, "qr": two_factor.qr_svg(uri), "secret": two_factor.grouped(secret)},
+    )
+
+
+@login_required
+def backup_codes(request):
+    """Shows newly made backup codes. They stay in the session only until the
+    person confirms they saved them."""
+    codes = request.session.get(two_factor.CODES_KEY)
+    if not codes:
+        return redirect("settings:security")
+    if request.method == "POST":
+        request.session.pop(two_factor.CODES_KEY, None)
+        messages.success(request, "Keep those backup codes somewhere safe. Each one works once.")
+        return redirect("settings:security")
+    return _render(request, "settings/backup_codes.html", "security", {"codes": codes})
+
+
+@login_required
+def backup_codes_download(request):
+    codes = request.session.get(two_factor.CODES_KEY)
+    if not codes:
+        return redirect("settings:security")
+    lines = [
+        "CodeGuard backup codes",
+        f"Account: {request.user.get_username()}",
+        f"Made: {timezone.now():%Y-%m-%d %H:%M} UTC",
+        "",
+        "Each code works once. Use one when you cannot use your authenticator app.",
+        "",
+        *codes,
+        "",
+    ]
+    response = HttpResponse("\n".join(lines), content_type="text/plain; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="codeguard-backup-codes.txt"'
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@login_required
+def two_factor_codes(request):
+    """Replaces the backup codes; the old ones stop working."""
+    if not two_factor.enabled(request.user):
+        return redirect("settings:security")
+    form = forms.CurrentPasswordForm(request.POST or None, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        codes = two_factor.new_backup_codes(request.user)
+        record_event(request.user, AuditAction.BACKUP_CODES_CREATE, request=request)
+        return _show_new_codes(request, codes)
+    return _render(
+        request,
+        "settings/two_factor_confirm.html",
+        "security",
+        {
+            "form": form,
+            "heading": "Make new backup codes",
+            "intro": "Your current backup codes stop working and ten new ones are made. You see them once.",
+            "submit": "Make new codes",
+            "danger": False,
+        },
+    )
+
+
+@login_required
+def two_factor_disable(request):
+    if not two_factor.enabled(request.user):
+        return redirect("settings:security")
+    form = forms.CurrentPasswordForm(request.POST or None, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        two_factor.disable(request.user)
+        record_event(request.user, AuditAction.TWO_FACTOR_DISABLE, request=request)
+        messages.success(request, "Two-step sign-in is off. Signing in needs only your password now.")
+        return redirect("settings:security")
+    return _render(
+        request,
+        "settings/two_factor_confirm.html",
+        "security",
+        {
+            "form": form,
+            "heading": "Turn off two-step sign-in",
+            "intro": "Signing in will need only your password. Your authenticator entry and backup codes stop working.",
+            "submit": "Turn off",
+            "danger": True,
         },
     )
 
@@ -391,10 +522,7 @@ def sessions(request):
 @login_required
 @require_POST
 def revoke_sessions(request):
-    preferences = preferences_for(request.user)
-    preferences.session_epoch += 1
-    preferences.save(update_fields=["session_epoch", "updated_at"])
-    request.session[SESSION_EPOCH_KEY] = preferences.session_epoch  # this session stays signed in
+    _sign_out_other_sessions(request)
     record_event(request.user, AuditAction.SESSIONS_REVOKED, request=request)
     messages.success(request, "Every other session has been signed out. This one stays signed in.")
     return redirect("settings:sessions")

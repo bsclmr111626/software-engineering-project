@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from accounts.permissions import analyst_required
@@ -20,6 +21,7 @@ from .engine import LIMITATIONS, STATE_LABELS, SimulationConfigError
 from .exports import write_history_csv, write_run_csv
 from .forms import SimulationForm
 from .models import RunStatus
+from .pdf import render_report
 from .services import OUTCOME_LABELS
 from .visual import build_pipeline
 
@@ -365,6 +367,21 @@ def export_run(request, run_id):
     response = _csv_response(f"codeguard-run-{run.short_id}.csv")
     write_run_csv(response, run)
     record_event(request.user, AuditAction.REPORT_EXPORT, target=run, request=request, format="csv")
+    return response
+
+
+@login_required
+def export_pdf(request, run_id):
+    """The report as an A4 PDF (simulation/pdf.py). Same access rule as the page."""
+    run = services.get_accessible_run(request.user, run_id)
+    data = render_report(
+        run, generated_for=request.user.get_username(), workspace_name=getattr(run.workspace, "name", "")
+    )
+    response = HttpResponse(data, content_type="application/pdf")
+    name = slugify(run.scenario_name)[:50] or "report"
+    response["Content-Disposition"] = f'attachment; filename="codeguard-{name}-{run.short_id}.pdf"'
+    response["Cache-Control"] = "private, no-store"
+    record_event(request.user, AuditAction.REPORT_EXPORT, target=run, request=request, format="pdf")
     return response
 
 

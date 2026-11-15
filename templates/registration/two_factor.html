@@ -1,0 +1,18 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Two-step sign-in{% endblock %}
+{% block content %}
+<h1>Enter your code</h1>
+<p>Open your authenticator app and enter the six-digit code for CodeGuard. If you cannot use the app, enter one of your backup codes.</p>
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  <div class="cg-field">
+    <label class="form-label" for="id_code">Code</label>
+    <input class="form-control form-control-lg mono" type="text" name="code" id="id_code" autocomplete="one-time-code" inputmode="numeric" autocapitalize="characters" spellcheck="false" maxlength="16" required autofocus{% if form.code.errors %} aria-invalid="true" aria-describedby="id_code_error"{% endif %}>
+    {% if form.code.errors %}<div class="invalid-feedback d-block" id="id_code_error">{% for e in form.code.errors %}{{ e }}{% endfor %}</div>{% endif %}
+  </div>
+  <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">Verify and sign in</span><span class="btn-loading">Checking…</span></button>
+</form>
+<div class="cg-auth-alt">
+  <span>Lost your phone and your backup codes? Ask an administrator of your workspace to reset two-step sign-in. <a href="{% url 'accounts:login' %}">Start again</a></span>
+</div>
+{% endblock %}

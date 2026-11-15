@@ -1,6 +1,5 @@
 from django import forms
 from django.conf import settings
-from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
@@ -45,9 +44,16 @@ class ThrottledAuthenticationForm(ThrottledLoginMixin, AuthenticationForm):
     field also accepts an email address (accounts/backends.py)."""
 
 
-class ThrottledAdminAuthenticationForm(ThrottledLoginMixin, AdminAuthenticationForm):
-    """The Django admin sign-in form with the same limits, so /admin/login/
-    cannot be used to guess passwords without the lockout (accounts/admin.py)."""
+class TwoFactorCodeForm(BootstrapFormMixin, forms.Form):
+    """The second sign-in step: a six-digit code or a backup code."""
+
+    code = forms.CharField(
+        label="Code",
+        max_length=16,
+        widget=forms.TextInput(
+            attrs={"autocomplete": "one-time-code", "inputmode": "numeric", "autocapitalize": "characters"}
+        ),
+    )
 
 
 class TermsMixin(forms.Form):

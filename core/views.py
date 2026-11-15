@@ -22,7 +22,7 @@ from simulation.risk import RISK_BANDS
 from simulation.services import accessible_runs
 from threats.models import SecurityControl, SupplyChainStage, ThreatScenario
 
-from . import analytics
+from . import analytics, onboarding
 from .notifications import notifications_for
 from .services import dashboard_metrics
 
@@ -69,7 +69,21 @@ def start(request):
 
 @login_required
 def dashboard(request):
-    return render(request, "dashboard/dashboard.html", {"metrics": dashboard_metrics(request.user)})
+    return render(
+        request,
+        "dashboard/dashboard.html",
+        {"metrics": dashboard_metrics(request.user), "onboarding": onboarding.checklist(request.user)},
+    )
+
+
+@login_required
+@require_POST
+def onboarding_toggle(request):
+    """Hides the "Get started" checklist, or shows it again."""
+    preferences = preferences_for(request.user)
+    preferences.onboarding_dismissed_at = None if request.POST.get("show") else timezone.now()
+    preferences.save(update_fields=["onboarding_dismissed_at", "updated_at"])
+    return redirect("core:dashboard")
 
 
 @login_required
@@ -190,7 +204,7 @@ def favicon(request):
 # --- Legal and contact pages ----------------------------------------------------
 
 # Change when the wording of the privacy notice or terms changes.
-LEGAL_UPDATED = date(2026, 11, 14)
+LEGAL_UPDATED = date(2026, 11, 15)
 
 
 def _public_page(request, template):

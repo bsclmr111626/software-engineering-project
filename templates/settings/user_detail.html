@@ -19,6 +19,7 @@
     <dt>Created through</dt><dd>{{ profile.get_origin_display }}</dd>
     {% if profile.job_title or profile.team %}<dt>Job title and team</dt><dd>{{ profile.job_title|default:"—" }}{% if profile.team %} · {{ profile.team }}{% endif %}</dd>{% endif %}
     <dt>Joined</dt><dd>{{ target.date_joined|date:"j F Y" }}</dd>
+    <dt>Two-step sign-in</dt><dd>{% if two_factor_on %}On{% else %}Off{% endif %}</dd>
     <dt>Last sign-in</dt><dd>{{ target.last_login|date:"Y-m-d H:i"|default:"Never" }}</dd>
   </dl>
 </section>
@@ -37,6 +38,9 @@
   <div class="cg-form-actions">
     {% if target.is_active %}
     <form method="post" action="{% url 'settings:suspend_user' target.pk %}" data-confirm="Suspend {{ target.get_username }}? They are signed out everywhere and cannot sign in until reactivated. Their work is kept.">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-slash-circle" aria-hidden="true"></i> Suspend</button></form>
+    {% if two_factor_on %}
+    <form method="post" action="{% url 'settings:reset_two_factor' target.pk %}" data-confirm="Turn off two-step sign-in for {{ target.get_username }}? Do this only when they have lost their authenticator app and their backup codes, and you have confirmed it is really them.">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-phone" aria-hidden="true"></i> Reset two-step sign-in</button></form>
+    {% endif %}
     {% if target.email %}
     <form method="post" action="{% url 'settings:send_password_reset' target.pk %}" data-confirm="Email {{ target.email }} a password reset link?">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit"><i class="bi bi-envelope" aria-hidden="true"></i> Send password reset link</button></form>
     {% endif %}

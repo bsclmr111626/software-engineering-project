@@ -1,0 +1,37 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Set up two-step sign-in · Settings{% endblock %}
+{% block settings_title %}Set up two-step sign-in{% endblock %}
+{% block settings_body %}
+<header>
+  <p class="small mb-1"><a href="{% url 'settings:security' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Password and security</a></p>
+  <h1>Set up two-step sign-in</h1>
+  <p>After your password, CodeGuard will ask for a six-digit code from an app on your phone. Someone who learns your password still cannot sign in without your phone.</p>
+</header>
+
+<section class="cg-settings-section" aria-labelledby="scan-h">
+  <h2 id="scan-h">1. Add CodeGuard to an authenticator app</h2>
+  <p class="cg-section-help">Any authenticator app works, for example Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden or Aegis. In the app, choose to add an account and scan this code.</p>
+  <div class="cg-qr-setup">
+    <div class="cg-qr-frame">{{ qr }}</div>
+    <div>
+      <p class="small mb-1">Cannot scan it? Enter this key in the app instead, as a time-based key:</p>
+      <p class="mono cg-qr-key" aria-label="Setup key">{{ secret }}</p>
+      <p class="small text-muted mb-0">Keep this key to yourself. Anyone with it can make your codes.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cg-settings-section" aria-labelledby="confirm-h">
+  <h2 id="confirm-h">2. Confirm</h2>
+  <form method="post" novalidate data-loading>
+    {% csrf_token %}
+    {% include "components/field.html" with field=form.code %}
+    {% include "components/field.html" with field=form.current_password %}
+    <div class="cg-form-actions">
+      <button class="btn btn-primary" type="submit"><span class="btn-label">Turn on two-step sign-in</span><span class="btn-loading">Checking…</span></button>
+      <a class="btn btn-outline-secondary" href="{% url 'settings:security' %}">Cancel</a>
+    </div>
+  </form>
+  <p class="small text-muted mt-3">Turning it on signs out your other sessions. You will then get ten backup codes for when your phone is not at hand.</p>
+</section>
+{% endblock %}

@@ -50,6 +50,7 @@
           <td class="text-end text-nowrap">
             {% if run.status == 'completed' %}
             <a class="btn btn-sm btn-ghost" href="{% url 'reports:document' run.id %}" title="Report document"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="visually-hidden">Report document for {{ run.scenario_name }}, {{ run.short_id }}</span></a>
+            {% if run.status == 'completed' %}<a class="btn btn-sm btn-ghost" href="{% url 'simulation:export_pdf' run.id %}" title="Download PDF"><i class="bi bi-filetype-pdf" aria-hidden="true"></i><span class="visually-hidden">Download PDF for {{ run.scenario_name }}, {{ run.short_id }}</span></a>{% endif %}
             <a class="btn btn-sm btn-ghost" href="{% url 'simulation:export_run' run.id %}" title="Export CSV"><i class="bi bi-filetype-csv" aria-hidden="true"></i><span class="visually-hidden">Export CSV for {{ run.scenario_name }}, {{ run.short_id }}</span></a>
             {% endif %}
           </td>

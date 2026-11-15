@@ -389,6 +389,34 @@ Limits, by choice:
   `accessible_runs`, `visible_scenarios` or `workspace_of` would not be caught by the database.
 - Public sign-up still needs email delivery on the live instance before it can be switched on.
 
+### Phase 4: product depth (in the repository, not yet deployed)
+
+| Area | What changed |
+|---|---|
+| Two-step sign-in | Optional, per account, from Settings > Password and security. Time-based codes (RFC 6238, checked against the RFC's own test vectors) from any authenticator app, set up with a QR code drawn from the theme tokens. A right password no longer signs the person in by itself: a five-minute code step follows, and wrong codes count against the sign-in lockout. Each code works once. Ten backup codes are shown once and stored only as hashes. Turning it on signs out other sessions; turning it off or making new codes needs the password. `/admin/login/` now redirects to the normal sign-in page so the admin cannot skip the step. Administrators can reset it for a member of their workspace; `manage.py reset_two_factor` covers everyone else. Every change is audited |
+| Remediation as team work | Items belong to a workspace and can be assigned to an analyst or administrator in it (the assignee is notified in the app and by email, subject to their notification settings) and shared with the workspace. New fields: assignee, shared, evidence link (http/https only). A history records every change of status, assignee, due date, evidence, notes and visibility, with comments from anyone who can see the item. Owners, assignees and workspace administrators can change an item; only owners and administrators can assign or share it. The plan gained Mine, Assigned to me and team views, an Overdue filter and an assignee column. Due-date notices go to the assignee. Existing items moved into their owner's workspace and stay private until shared |
+| PDF reports | A4 PDF of any report the person can open, from the report, result and reports list pages. Drawn with Matplotlib (no new system libraries): embedded TrueType fonts so the text stays searchable, a vector stage chart, tables that repeat their header across pages and a "page N of M" footer. Downloads are audited |
+| Getting started | A checklist on the Overview, worked out from real data (first run, a run with controls, a fix on the plan, team invited for administrators, two-step sign-in) and different for viewers. It can be hidden and brought back |
+
+Evidence: `accounts/tests/test_two_factor.py` (36 tests), `remediation/tests/test_team.py`
+(11), `simulation/tests/test_pdf.py` (8) and `core/tests/test_onboarding.py` (6), including
+cross-workspace checks for assignment, comments and PDFs. Each flow was also run by hand in
+a browser against the local server: setting up two-step sign-in with a real QR key, signing
+in with a code and with a backup code, assigning and commenting on an item, and downloading a
+PDF.
+
+Limits, by choice:
+
+- Two-step sign-in is optional; no workspace can require it yet.
+- Authenticator keys are stored as given (as most two-factor libraries do), not encrypted
+  with a separate key; database backups must therefore stay private.
+- Assignment emails need email delivery, which the live instance does not have yet; the
+  in-app notification works without it.
+- Remediation items still belong to the person who added them and are deleted with that
+  account (P1-7), comments and history included.
+- The PDF uses the light theme and DejaVu Sans, not the site's fonts, and has no table of
+  contents.
+
 ## 14. What this audit could not verify
 
 - Anything behind sign-in on the live site, including which accounts exist.

@@ -1,0 +1,1 @@
+{% autoescape off %}{{ by }} assigned you a remediation item on {{ site_name }}{% endautoescape %}

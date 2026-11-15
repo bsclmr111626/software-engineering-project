@@ -1,0 +1,21 @@
+<section class="cg-section cg-panel" aria-labelledby="start-h">
+  <div class="cg-panel-body">
+    <div class="cg-onboard-head">
+      <div>
+        <h2 id="start-h" class="mb-1">Get started{% if user.first_name %}, {{ user.first_name }}{% endif %}</h2>
+        <p class="text-muted small mb-0">{{ onboarding.done }} of {{ onboarding.total }} done. Each step ticks itself off when you do it.</p>
+      </div>
+      <form method="post" action="{% url 'core:onboarding_toggle' %}">{% csrf_token %}<button class="btn btn-sm btn-ghost" type="submit">Hide this</button></form>
+    </div>
+    <progress class="cg-onboard-progress" max="{{ onboarding.total }}" value="{{ onboarding.done }}" aria-label="Getting started: {{ onboarding.done }} of {{ onboarding.total }} steps done">{{ onboarding.done }} of {{ onboarding.total }}</progress>
+    <ol class="cg-onboard-list mt-3">
+      {% for step in onboarding.steps %}
+      <li class="{% if step.done %}is-done{% elif step == onboarding.next %}is-next{% endif %}">
+        <span class="cg-onboard-mark" aria-hidden="true">{% if step.done %}<i class="bi bi-check-lg"></i>{% else %}{{ forloop.counter }}{% endif %}</span>
+        <div><strong>{{ step.title }}</strong>{% if step.done %}<span class="visually-hidden"> (done)</span>{% endif %}<div class="small text-muted">{{ step.detail }}</div></div>
+        {% if not step.done %}<a class="btn btn-sm {% if step == onboarding.next %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ step.url }}">{{ step.action }}</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>

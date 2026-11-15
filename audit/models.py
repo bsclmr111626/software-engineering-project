@@ -23,6 +23,8 @@ class AuditAction(models.TextChoices):
     AUDIT_PURGE = "audit_purge", "Purged old audit events"
     REMEDIATION_CREATE = "remediation_create", "Added to remediation plan"
     REMEDIATION_UPDATE = "remediation_update", "Updated remediation item"
+    REMEDIATION_ASSIGN = "remediation_assign", "Assigned a remediation item"
+    REMEDIATION_COMMENT = "remediation_comment", "Commented on a remediation item"
     PROFILE_UPDATE = "profile_update", "Updated profile"
     EMAIL_CHANGE = "email_change", "Changed email address"
     PREFERENCES_UPDATE = "preferences_update", "Updated preferences"
@@ -44,6 +46,12 @@ class AuditAction(models.TextChoices):
     ACCOUNT_DELETE = "account_delete", "Deleted a closed account"
     WORKSPACE_CREATE = "workspace_create", "Created a workspace"
     WORKSPACE_UPDATE = "workspace_update", "Renamed the workspace"
+    TWO_FACTOR_ENABLE = "two_factor_enable", "Turned on two-step sign-in"
+    TWO_FACTOR_DISABLE = "two_factor_disable", "Turned off two-step sign-in"
+    TWO_FACTOR_RESET = "two_factor_reset", "Reset a member's two-step sign-in"
+    TWO_FACTOR_FAILED = "two_factor_failed", "Wrong two-step sign-in code"
+    BACKUP_CODES_CREATE = "backup_codes_create", "Made new backup codes"
+    BACKUP_CODE_USED = "backup_code_used", "Signed in with a backup code"
 
 
 class AppendOnlyQuerySet(models.QuerySet):

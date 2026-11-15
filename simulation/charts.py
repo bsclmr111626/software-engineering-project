@@ -203,7 +203,12 @@ def overall_risk_chart(run, palette=DEFAULT_PALETTE):
 def stage_risk_chart(stage_results, palette=DEFAULT_PALETTE):
     """Chart 2: risk score by supply chain stage."""
     fig = _figure(palette, 8, 4)
-    ax = fig.add_subplot()
+    draw_stage_risk(fig.add_subplot(), stage_results, palette)
+    return _png(fig, palette)
+
+
+def draw_stage_risk(ax, stage_results, palette=DEFAULT_PALETTE):
+    """Draws chart 2 on ``ax``; shared by the PNG and the PDF report (simulation/pdf.py)."""
     names = [_tick_label(s.stage_name) for s in stage_results]
     x = range(len(stage_results))
     width = 0.38
@@ -235,7 +240,6 @@ def stage_risk_chart(stage_results, palette=DEFAULT_PALETTE):
     ax.yaxis.grid(True, color=palette.grid, linewidth=0.8, zorder=0)
     _style(ax, palette, "Risk score by supply chain stage", ylabel="Risk score (0-100)")
     _legend(ax, palette, "Inherent", "Residual (colour = risk class)")
-    return _png(fig, palette)
 
 
 def outcome_chart(events, palette=DEFAULT_PALETTE):

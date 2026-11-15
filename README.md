@@ -66,8 +66,10 @@ The demo accounts are for local use only. The full installation, configuration a
 - **Security control catalog**: 14 preventive, detective and recovery controls. Each states the assumption behind its illustrative effectiveness value and what it does not cover.
 - **Recommendations**: each one is computed by re-running the model with the control added, so it reports the exact modeled reduction.
 - **Before/after comparison**: rerun with different controls and compare runs stage by stage.
-- **Remediation plan**: add a recommended control to a private plan, track status, due date and notes, and see it verified when a later run with the control enabled confirms the modeled reduction.
-- **Historical reports**: immutable, versioned snapshots; CSV export; optional read-only sharing.
+- **Remediation as team work**: add a recommended control to the plan, assign it to a colleague in your workspace (they are notified in the app and by email), share it with the workspace, track status, due date, notes and an evidence link, discuss it in comments, and follow every change in its history. The plan has Mine, Assigned to me and team views and an Overdue filter; an item is verified when a later run by the owner or assignee confirms the modeled reduction.
+- **Historical reports**: immutable, versioned snapshots; an A4 PDF download (real, searchable text and a vector chart), CSV export and optional read-only sharing.
+- **Two-step sign-in**: optional codes from any authenticator app (RFC 6238), ten single-use backup codes, the same lockout as passwords, and a reset by a workspace administrator or `manage.py reset_two_factor` for someone who lost both.
+- **Getting started**: a checklist on the Overview that follows the person's role and ticks itself off from what they have actually done.
 - **Multi-page product shell**: a sidebar organised the way an analyst works (Overview; Model: Supply chain, Threat library, Security controls; Simulate: Simulations, Results; Analyze and respond: Risk analysis, Remediation; Records: Reports, Activity and audit), breadcrumbs, a notifications inbox and an account menu. See [Information architecture](#information-architecture).
 - **Supply chain explorer**: the five stages with their assets, protecting controls, entry scenarios, a propagation graph aggregated across scenarios, and per-stage history.
 - **Results workspace**: each run opens on a summary (headline risk, plain-language explanation, propagation diagram, top recommendations, affected assets) with tabs for stage analysis, every evaluated path, controls and recommendations, and inputs and method. Any run can also be opened as a printable assessment document.
@@ -81,7 +83,7 @@ The demo accounts are for local use only. The full installation, configuration a
 - **Settings center**: Profile, Account (email change with password confirmation), Appearance and theme (light, dark or system; three accent themes), Text and typography, Display (density, timestamps, rows per page, start page), Accessibility (reduced motion, increased contrast, underlined links), Notifications, Privacy and data (share-by-default, JSON export of your data), Password and security, Sessions (sign out everywhere else), and for administrators Organization and Users and roles. Every setting is stored per user and changes behaviour.
 - **Design system**: a distinct editorial identity (warm paper, graphite ink, an ultramarine signal colour; Newsreader, Instrument Sans and JetBrains Mono) defined as CSS tokens, with light and dark themes. See [DESIGN.md](DESIGN.md).
 - **Accessibility**: WCAG 2.2 AA automated audit (axe-core) of 47 pages at desktop and phone widths in both themes with 0 violations; keyboard operation with visible focus, labelled forms whose errors are announced, and text alternatives plus data tables for the diagram and charts.
-- **Tests and CI**: 332 automated tests, 96% coverage, a Jenkins pipeline, GitHub Actions, Ruff, and optional browser-based verification tools.
+- **Tests and CI**: 530 automated tests, 95% coverage, a Jenkins pipeline, GitHub Actions, Ruff, and optional browser-based verification tools.
 
 ## Information architecture
 
@@ -234,11 +236,11 @@ Last re-verified on 2026-10-28 (product redesign) on Windows 11 with Python 3.12
 
 | Check | Result |
 |---|---|
-| `pytest` | **332 passed** |
-| Coverage | **96%** total (gate is 85%) |
+| `pytest` *(2026-11-15)* | **530 passed** |
+| Coverage *(2026-11-15)* | **95%** total (gate is 85%) |
 | Ruff lint/format, `manage.py check`, `makemigrations --check` | Clean |
-| `scripts/ci_deploy_check.py` (`check --deploy`) | 0 errors; 2 intentional HSTS warnings, and `codeguard.W001` because the default registration mode is `open` (see Security notes) |
-| `scripts/ci_dependency_audit.py` (`pip-audit`) *(2026-10-26)* | No known vulnerabilities. Offline behaviour also tested: exit 2 (UNSTABLE) after the 180 s cap. |
+| `scripts/ci_deploy_check.py` (`check --deploy`) *(2026-11-15)* | 0 errors; 2 intentional HSTS warnings, and `codeguard.W001`/`W002` while email delivery is not configured (see Security notes) |
+| `scripts/ci_dependency_audit.py` (`pip-audit`) *(2026-11-15)* | No known vulnerabilities. Offline behaviour also tested: exit 2 (UNSTABLE) after the 180 s cap. |
 | Jenkinsfile commands rehearsed on a clean checkout with a fresh venv (`scripts/rehearse_jenkinsfile.py`) *(2026-10-26)* | SUCCESS (not a Jenkins execution; see below) |
 | Concurrent writes: 4 processes × 50 simulation runs on one SQLite file *(2026-10-26)* | 200/200 completed (Django defaults: 44/200) |
 | axe-core 4.10.2, WCAG 2.0/2.1/2.2 A+AA and best practice, 47 pages at 1280px and 390px, light and dark themes | **0 violations** |
@@ -340,7 +342,7 @@ Read the in-app **Methodology** page or [docs/architecture.md](docs/architecture
 - A strict Content Security Policy is applied, with no inline scripts and only same-origin assets. The app also sets `X-Frame-Options: DENY`, `nosniff` and `Referrer-Policy`.
 - When `DEBUG` is off, the app turns on HTTPS redirect, secure cookies and HSTS, and requires `DJANGO_SECRET_KEY`. Deploy behind HTTPS only.
 - `check --deploy` leaves two intentional warnings: HSTS subdomains and preload. Enable them only if you control every subdomain.
-- Sign-in is throttled (5 failures per username or 20 per IP within 15 minutes) and every throttled attempt is audited.
+- Sign-in is throttled (5 failures per username or 20 per IP within 15 minutes) and every throttled attempt is audited. Wrong two-step codes count against the same limit. `/admin/login/` sends people to the normal sign-in page, so the Django admin cannot be used to skip either.
 - The workspace is the tenancy boundary: "shared" means the members of your workspace, never another workspace. An account belongs to exactly one workspace. `check --deploy` warns (`codeguard.W001`) when sign-up is enabled but email is not delivered, because new accounts could never confirm their address.
 - Known limitations:
   - SQLite is tuned for a single host with a few workers (WAL, immediate transactions); beyond that, move to PostgreSQL (see [docs/architecture.md](docs/architecture.md), section 9).

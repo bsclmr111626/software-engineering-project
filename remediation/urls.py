@@ -8,4 +8,6 @@ urlpatterns = [
     path("", views.plan, name="plan"),
     path("track/", views.track, name="track"),
     path("<int:pk>/", views.detail, name="detail"),
+    path("<int:pk>/assign/", views.assign, name="assign"),
+    path("<int:pk>/comment/", views.comment, name="comment"),
 ]

@@ -1,0 +1,20 @@
+{% extends "layouts/settings.html" %}
+{% block title %}{{ heading }} · Settings{% endblock %}
+{% block settings_title %}{{ heading }}{% endblock %}
+{% block settings_body %}
+<header>
+  <p class="small mb-1"><a href="{% url 'settings:security' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Password and security</a></p>
+  <h1>{{ heading }}</h1>
+  <p>{{ intro }}</p>
+</header>
+<section class="cg-settings-section" aria-label="Confirm with your password">
+  <form method="post" novalidate data-loading>
+    {% csrf_token %}
+    {% include "components/field.html" with field=form.current_password %}
+    <div class="cg-form-actions">
+      <button class="btn {% if danger %}btn-danger{% else %}btn-primary{% endif %}" type="submit"><span class="btn-label">{{ submit }}</span><span class="btn-loading">Working…</span></button>
+      <a class="btn btn-outline-secondary" href="{% url 'settings:security' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

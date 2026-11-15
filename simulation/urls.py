@@ -15,4 +15,5 @@ urlpatterns = [
     path("<uuid:run_id>/<slug:section>/", views.detail, name="detail_section"),
     path("<uuid:run_id>/chart/<slug:kind>.png", views.chart, name="chart"),
     path("<uuid:run_id>/export.csv", views.export_run, name="export_run"),
+    path("<uuid:run_id>/report.pdf", views.export_pdf, name="export_pdf"),
 ]

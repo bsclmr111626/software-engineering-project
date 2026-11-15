@@ -14,6 +14,8 @@
   {% endif %}
 </div>
 
+{% if onboarding.visible %}{% include "dashboard/_get_started.html" %}{% endif %}
+
 <section class="cg-section" aria-label="Key figures">
   <div class="cg-metrics">
     <a class="cg-metric" href="{% url 'threats:list' %}">
@@ -149,5 +151,8 @@
   <a class="cg-panel cg-panel-body d-block text-decoration-none" href="{% url 'core:supply_chain' %}"><span class="cg-icon-tile mb-3"><i class="bi bi-diagram-3" aria-hidden="true"></i></span><h2 class="h5 text-body">Explore the supply chain</h2><p class="text-muted mb-0">See the five modeled stages, their assets and the controls that protect them.</p></a>
   <a class="cg-panel cg-panel-body d-block text-decoration-none" href="{% url 'threats:list' %}"><span class="cg-icon-tile mb-3"><i class="bi bi-bug" aria-hidden="true"></i></span><h2 class="h5 text-body">Browse the threat library</h2><p class="text-muted mb-0">Read each scenario's entry point, propagation rules and assumptions.</p></a>
 </section>
+{% endif %}
+{% if onboarding.hidden_but_incomplete %}
+<form method="post" action="{% url 'core:onboarding_toggle' %}" class="small text-muted mt-4">{% csrf_token %}<input type="hidden" name="show" value="1">The getting started checklist is hidden. <button class="btn btn-link btn-sm p-0 align-baseline" type="submit">Show it again</button></form>
 {% endif %}
 {% endblock %}

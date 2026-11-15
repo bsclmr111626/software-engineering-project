@@ -8,6 +8,7 @@ from collections import defaultdict
 from django.db.models import Avg, Count, F, Q
 from django.utils import timezone
 
+from accounts.workspaces import workspace_of
 from remediation.models import ACTIVE_STATUSES, RemediationItem
 from simulation.models import RunStatus, SimulationStageResult
 from simulation.services import accessible_runs
@@ -60,7 +61,9 @@ def dashboard_metrics(user):
          "tip": f"{band.title()}: {band_counts.get(band, 0)} run(s)"}
         for band in reversed(BANDS)
     ]  # fmt: skip
-    active_items = RemediationItem.objects.filter(owner=user, status__in=ACTIVE_STATUSES)
+    active_items = RemediationItem.objects.filter(
+        Q(owner=user) | Q(assignee=user, workspace=workspace_of(user)), status__in=ACTIVE_STATUSES
+    )
     return {
         "stage_strip": stage_strip,
         "band_chart": svgcharts.hbars(band_rows, max_value=max([r["value"] for r in band_rows] + [1]), width=520),

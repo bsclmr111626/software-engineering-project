@@ -36,7 +36,9 @@ CATEGORY = {
         "library",
     ),
     **dict.fromkeys(["simulation_run", "simulation_failed", "report_share", "report_export"], "simulation"),
-    **dict.fromkeys(["remediation_create", "remediation_update"], "remediation"),
+    **dict.fromkeys(
+        ["remediation_create", "remediation_update", "remediation_assign", "remediation_comment"], "remediation"
+    ),
     **dict.fromkeys(["role_change", "audit_purge", "profile_update", "preferences_update", "data_export"], "admin"),
 }
 

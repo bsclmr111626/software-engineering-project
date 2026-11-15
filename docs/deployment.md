@@ -227,6 +227,12 @@ bash scripts/release.sh
 
 The first release that contains the script still needs one manual `git pull` to fetch it.
 
+**Two-step sign-in recovery.** If someone loses both their phone and their backup codes, an
+administrator of their workspace resets it from Settings > Members and roles. For a superuser
+or a workspace whose only administrator is locked out, confirm who is asking, then run
+`python manage.py reset_two_factor <username>` (audited). Database backups contain the
+authenticator keys, which is one more reason to keep them private.
+
 **Backups.** Every release takes one. Between releases, run `python manage.py backup_db` from
 a scheduled task if the plan offers one, otherwise by hand weekly, and download the newest
 file from `~/codeguard/backups/` (Files tab) so a copy exists off the server.

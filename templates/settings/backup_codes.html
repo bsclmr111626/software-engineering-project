@@ -1,0 +1,20 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Backup codes · Settings{% endblock %}
+{% block settings_title %}Backup codes{% endblock %}
+{% block settings_body %}
+<header>
+  <h1>Save your backup codes</h1>
+  <p>Use one of these when you cannot use your authenticator app. Each works once. This is the only time they are shown; CodeGuard keeps only a scrambled copy it cannot read back.</p>
+</header>
+<section class="cg-settings-section" aria-labelledby="codes-h">
+  <h2 id="codes-h">Your codes</h2>
+  <ol class="cg-backup-codes mono" aria-label="Backup codes">
+    {% for code in codes %}<li>{{ code }}</li>{% endfor %}
+  </ol>
+  <div class="cg-form-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'settings:backup_codes_download' %}"><i class="bi bi-download" aria-hidden="true"></i> Download as a text file</a>
+    <form method="post">{% csrf_token %}<button class="btn btn-primary" type="submit">I have saved them</button></form>
+  </div>
+  <p class="small text-muted mt-3">Keep them somewhere safe and separate from your phone, for example in a password manager or printed at home.</p>
+</section>
+{% endblock %}

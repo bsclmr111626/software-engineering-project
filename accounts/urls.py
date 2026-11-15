@@ -3,7 +3,6 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from . import views
-from .forms import ThrottledAuthenticationForm
 
 app_name = "accounts"
 
@@ -13,11 +12,8 @@ urlpatterns = [
     path("confirm-email/resend/", views.resend_verification, name="resend_verification"),
     path("confirm-email/<str:token>/", views.verify_email, name="verify_email"),
     path("invitation/<str:token>/", views.accept_invitation, name="accept_invitation"),
-    path(
-        "login/",
-        auth_views.LoginView.as_view(redirect_authenticated_user=True, authentication_form=ThrottledAuthenticationForm),
-        name="login",
-    ),
+    path("login/", views.SignInView.as_view(), name="login"),
+    path("login/code/", views.two_factor_challenge, name="two_factor"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("password/change/", views.AuditedPasswordChangeView.as_view(), name="password_change"),
     path(

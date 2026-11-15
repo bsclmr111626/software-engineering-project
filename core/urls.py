@@ -9,6 +9,7 @@ urlpatterns = [
     path("start/", views.start, name="start"),
     path("overview/", views.dashboard, name="dashboard"),
     path("overview/risk-distribution.png", views.dashboard_chart, name="dashboard_chart"),
+    path("overview/get-started/", views.onboarding_toggle, name="onboarding_toggle"),
     path("dashboard/", views.dashboard_redirect, name="dashboard_legacy"),
     path("supply-chain/", views.supply_chain, name="supply_chain"),
     path("supply-chain/<slug:key>/", views.stage_detail, name="stage_detail"),

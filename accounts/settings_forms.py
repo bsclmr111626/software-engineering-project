@@ -100,6 +100,53 @@ class CloseAccountForm(BootstrapFormMixin, forms.Form):
         return password
 
 
+class CurrentPasswordForm(BootstrapFormMixin, forms.Form):
+    """Asks for the current password before a change to how the account signs in."""
+
+    current_password = forms.CharField(
+        label="Current password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}),
+    )
+
+    def __init__(self, *args, user, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        password = self.cleaned_data["current_password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("The password is incorrect.")
+        return password
+
+
+class TwoFactorSetupForm(CurrentPasswordForm):
+    """Turning two-step sign-in on: the password, and a code from the app to
+    prove it was set up with the key shown."""
+
+    code = forms.CharField(
+        label="Six-digit code from the app",
+        max_length=8,
+        widget=forms.TextInput(attrs={"autocomplete": "one-time-code", "inputmode": "numeric"}),
+    )
+
+    def __init__(self, *args, secret, **kwargs):
+        self.secret = secret
+        self.step = None
+        super().__init__(*args, **kwargs)
+
+    def clean_code(self):
+        from . import two_factor
+
+        self.step = two_factor.matching_step(self.secret, self.cleaned_data["code"])
+        if self.step is None:
+            raise forms.ValidationError(
+                "That code does not match. Check that the app added the CodeGuard entry and that "
+                "your device's clock is set automatically, then try the newest code."
+            )
+        return self.cleaned_data["code"]
+
+
 class WorkspaceForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Workspace
@@ -178,12 +225,12 @@ class NotificationForm(PreferenceForm):
         fields = ["notify_shared_reports", "notify_remediation_due", "notify_account_security"]
         labels = {
             "notify_shared_reports": "Reports shared by colleagues",
-            "notify_remediation_due": "Remediation due dates",
+            "notify_remediation_due": "Remediation assignments and due dates",
             "notify_account_security": "Account security events",
         }
         help_texts = {
             "notify_shared_reports": "When a colleague shares a simulation report with your workspace.",
-            "notify_remediation_due": "Your open remediation items that are overdue or due within 7 days.",
+            "notify_remediation_due": "When a colleague assigns you an item (also by email), and your open items that are overdue or due within 7 days.",
             "notify_account_security": "Password and email changes, role changes, signed-out sessions and failed sign-ins to your account.",
         }
 

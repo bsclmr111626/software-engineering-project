@@ -174,6 +174,8 @@ class UserPreference(models.Model):
     notify_remediation_due = models.BooleanField(default=True)
     notify_account_security = models.BooleanField(default=True)
     notifications_seen_at = models.DateTimeField(null=True, blank=True)
+    # When the person hid the Overview's "Get started" checklist (core/onboarding.py).
+    onboarding_dismissed_at = models.DateTimeField(null=True, blank=True)
 
     share_reports_by_default = models.BooleanField(default=False)
 
@@ -243,3 +245,37 @@ class Invitation(models.Model):
     @property
     def is_open(self):
         return self.status == "pending"
+
+
+class TwoFactorDevice(models.Model):
+    """An authenticator app linked to an account (time-based one-time codes,
+    RFC 6238). With one confirmed, signing in asks for a six-digit code after
+    the password (accounts/two_factor.py).
+
+    ``secret`` is the shared key the app was given. It is stored as is, like
+    the password reset machinery's own secrets: a database backup therefore
+    holds it and must be kept private. ``last_used_step`` stops a code from
+    being used twice.
+    """
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="two_factor")
+    secret = models.CharField(max_length=64)
+    confirmed_at = models.DateTimeField()
+    last_used_step = models.BigIntegerField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Two-step sign-in for {self.user.get_username()}"
+
+
+class BackupCode(models.Model):
+    """A single-use code for signing in without the authenticator app. Only a
+    SHA-256 hash is stored; the person sees the codes once, when they are made."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="backup_codes")
+    code_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Backup code of {self.user.get_username()}"

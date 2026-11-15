@@ -13,6 +13,28 @@
     <a class="btn btn-outline-secondary" href="{% url 'accounts:password_change' %}"><i class="bi bi-key" aria-hidden="true"></i> Change password</a>
   </div>
 </section>
+<section class="cg-settings-section" aria-labelledby="tf-h">
+  <h2 id="tf-h">Two-step sign-in</h2>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 cg-panel cg-panel-body">
+    {% if two_factor %}
+    <div>
+      <strong><i class="bi bi-shield-check" aria-hidden="true"></i> On since {{ two_factor.confirmed_at|date:"j F Y" }}</strong>
+      <div class="small text-muted">Signing in asks for a code from your authenticator app. {{ backup_codes_left }} backup code{{ backup_codes_left|pluralize }} left{% if two_factor.last_used_at %}; last code used {{ two_factor.last_used_at|date:"j F Y, H:i" }}{% endif %}.</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'settings:two_factor_codes' %}">New backup codes</a>
+      <a class="btn btn-ghost" href="{% url 'settings:two_factor_disable' %}">Turn off</a>
+    </div>
+    {% else %}
+    <div>
+      <strong>Off</strong>
+      <div class="small text-muted">Ask for a code from an app on your phone after your password, so a stolen password alone is not enough.</div>
+    </div>
+    <a class="btn btn-primary" href="{% url 'settings:two_factor_setup' %}"><i class="bi bi-phone" aria-hidden="true"></i> Set up</a>
+    {% endif %}
+  </div>
+  {% if two_factor and backup_codes_left < 3 %}<div class="cg-note mt-2"><i class="bi bi-info-circle" aria-hidden="true"></i><p>You are running out of backup codes. Make new ones so you are not locked out if you lose your phone.</p></div>{% endif %}
+</section>
 <section class="cg-settings-section" aria-labelledby="prot-h">
   <h2 id="prot-h">Protections on your account</h2>
   <dl class="cg-ledger">
