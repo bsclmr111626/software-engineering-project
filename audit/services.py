@@ -46,10 +46,31 @@ def client_ip(request):
     return request.META.get("REMOTE_ADDR") or None
 
 
-def record_event(actor, action, target=None, request=None, **metadata):
+def _event_workspace(actor, authenticated, target, metadata):
+    """The workspace an event belongs to: the actor's; else the account it is
+    about (a user, or the account named in a failed sign-in); else none."""
+    from django.contrib.auth import get_user_model
+
+    from accounts.workspaces import workspace_of
+
+    if authenticated:
+        return workspace_of(actor)
+    User = get_user_model()
+    if isinstance(target, User):
+        return workspace_of(target)
+    name = metadata.get("attempted_username")
+    if name:
+        match = User.objects.filter(username__iexact=str(name)).first()
+        if match is not None:
+            return workspace_of(match)
+    return None
+
+
+def record_event(actor, action, target=None, request=None, workspace=None, **metadata):
     authenticated = actor is not None and getattr(actor, "is_authenticated", False)
     event = AuditEvent.objects.create(
         actor=actor if authenticated else None,
+        workspace=workspace or _event_workspace(actor, authenticated, target, metadata),
         actor_username=actor.get_username() if authenticated else "",
         action=action,
         object_type=target.__class__.__name__ if target is not None else "",

@@ -29,7 +29,7 @@ from threats.models import ThreatScenario
 
 from . import closure, emails, lifecycle
 from . import settings_forms as forms
-from .models import ColorMode, Profile, Role
+from .models import ColorMode, Profile, Role, Workspace
 from .permissions import admin_required, get_role
 from .preferences import (
     SESSION_AGENT_KEY,
@@ -38,6 +38,7 @@ from .preferences import (
     describe_agent,
     preferences_for,
 )
+from .workspaces import workspace_of
 
 # The settings navigation: (url name, label, icon, admin only). Grouped in the template.
 SETTINGS_NAV = [
@@ -63,7 +64,7 @@ SETTINGS_NAV = [
 ]
 ADMIN_NAV = (
     "Administration",
-    [("organization", "Organization", "bi-buildings"), ("users", "Users and roles", "bi-people")],
+    [("organization", "Workspace", "bi-buildings"), ("users", "Members and roles", "bi-people")],
 )
 
 
@@ -281,6 +282,7 @@ def export_data(request):
             "role": get_role(user),
             "job_title": getattr(getattr(user, "profile", None), "job_title", ""),
             "team": getattr(getattr(user, "profile", None), "team", ""),
+            "workspace": getattr(workspace_of(user), "name", ""),
             "email_verified_at": _iso(getattr(getattr(user, "profile", None), "email_verified_at", None)),
             "pending_email": getattr(getattr(user, "profile", None), "pending_email", ""),
             "account_origin": getattr(getattr(user, "profile", None), "origin", ""),
@@ -420,24 +422,43 @@ def quick_theme(request):
 
 @admin_required
 def organization(request):
-    roles = dict(Profile.objects.values_list("role").annotate(n=Count("id")).order_by())
+    """The administrator's view of their workspace. Deployment-wide settings
+    are shown to platform administrators (superusers) only."""
+    workspace = workspace_of(request.user)
+    form = forms.WorkspaceForm(request.POST or None, instance=workspace)
+    if request.method == "POST" and form.is_valid():
+        if form.changed_data:
+            form.save()
+            record_event(request.user, AuditAction.WORKSPACE_UPDATE, target=workspace, request=request)
+        messages.success(request, "Workspace name saved.")
+        return redirect("settings:organization")
+    profiles = Profile.objects.filter(workspace=workspace)
+    roles = dict(profiles.values_list("role").annotate(n=Count("id")).order_by())
+    deployment = None
+    if request.user.is_superuser:
+        deployment = {
+            "registration": settings.CODEGUARD_REGISTRATION,
+            "registration_domains": settings.CODEGUARD_REGISTRATION_DOMAINS,
+            "workspace_total": Workspace.objects.count(),
+            "account_total": get_user_model().objects.count(),
+            "email_backend": describe_backend(),
+            "from_email": settings.DEFAULT_FROM_EMAIL,
+            "client_ip_source": settings.CODEGUARD_CLIENT_IP_HEADER or "REMOTE_ADDR",
+        }
     return _render(
         request,
         "settings/organization.html",
         "organization",
         {
-            "registration": settings.CODEGUARD_REGISTRATION,
-            "registration_domains": settings.CODEGUARD_REGISTRATION_DOMAINS,
-            "default_role": Role(settings.CODEGUARD_DEFAULT_ROLE).label,
+            "form": form,
+            "workspace": workspace,
             "lockout_failures": settings.CODEGUARD_LOGIN_MAX_FAILURES,
             "lockout_ip_failures": settings.CODEGUARD_LOGIN_IP_MAX_FAILURES,
             "lockout_minutes": settings.CODEGUARD_LOGIN_LOCKOUT_MINUTES,
             "session_hours": settings.SESSION_COOKIE_AGE // 3600,
             "expires_at_close": settings.SESSION_EXPIRE_AT_BROWSER_CLOSE,
-            "user_total": get_user_model().objects.count(),
+            "user_total": profiles.count(),
             "role_counts": [(label, roles.get(value, 0)) for value, label in Role.choices],
-            "email_backend": describe_backend(),
-            "from_email": settings.DEFAULT_FROM_EMAIL,
-            "client_ip_source": settings.CODEGUARD_CLIENT_IP_HEADER or "REMOTE_ADDR",
+            "deployment": deployment,
         },
     )

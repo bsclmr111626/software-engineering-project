@@ -16,8 +16,8 @@ variables win over `.env`. Booleans go through `env_bool()`: `1`, `true`, `yes`,
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` when DEBUG, else empty | `ALLOWED_HOSTS` | — | yes |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | `CSRF_TRUSTED_ORIGINS` (scheme included) | — | yes |
 | `DJANGO_DB_PATH` | `<BASE_DIR>/db.sqlite3` | SQLite file path | — | yes (commented) |
-| `CODEGUARD_DEFAULT_ROLE` | `analyst` | Role of self-registered users | must be `analyst` or `viewer` | yes |
-| `CODEGUARD_REGISTRATION` | `open` | `open`, `domain` or `closed` self-registration | yes; `domain` requires the next variable | yes |
+| `CODEGUARD_DEFAULT_ROLE` | `analyst` | Role of accounts created in the Django admin or with `create_user` (sign-ups administer their own workspace) | must be `analyst` or `viewer` | yes |
+| `CODEGUARD_REGISTRATION` | `open` | `open`, `domain` or `closed` (invitation only); each sign-up creates its own workspace | yes; `domain` requires the next variable | yes |
 | `CODEGUARD_REGISTRATION_DOMAINS` | empty | Allowed email domains for `domain` mode (lower-cased) | — | yes (commented) |
 | `CODEGUARD_LOGIN_MAX_FAILURES` | `5` | Failed sign-ins per username in the window before lock | `int()` | yes (commented) |
 | `CODEGUARD_LOGIN_IP_MAX_FAILURES` | `20` | Failed sign-ins per client IP in the window | `int()` | yes (commented) |

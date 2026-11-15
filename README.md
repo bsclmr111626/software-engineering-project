@@ -177,8 +177,8 @@ Settings are read from environment variables. A local `.env` file is loaded auto
 | `DJANGO_SECRET_KEY` | *(required when DEBUG is false)* | Cryptographic signing key; never commit it |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` in DEBUG, empty otherwise | Comma-separated host names |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | e.g. `https://codeguard.example.edu` |
-| `CODEGUARD_DEFAULT_ROLE` | `analyst` | Role for self-registered users: `analyst` or `viewer` (never admin) |
-| `CODEGUARD_REGISTRATION` | `open` | `open`, `domain` (with `CODEGUARD_REGISTRATION_DOMAINS`) or `closed`. Use `domain` or `closed` on any reachable deployment |
+| `CODEGUARD_DEFAULT_ROLE` | `analyst` | Role of accounts created in the Django admin or with `create_user`: `analyst` or `viewer`. Sign-ups administer their own new workspace; invitations carry their own role |
+| `CODEGUARD_REGISTRATION` | `open` | `open`, `domain` (with `CODEGUARD_REGISTRATION_DOMAINS`) or `closed` (invitation only). Each sign-up gets its own workspace and must confirm its email, so sign-up needs working email |
 | `CODEGUARD_LOGIN_MAX_FAILURES`, `CODEGUARD_LOGIN_IP_MAX_FAILURES`, `CODEGUARD_LOGIN_LOCKOUT_MINUTES` | `5`, `20`, `15` | Sign-in throttling |
 | `CODEGUARD_CLIENT_IP_HEADER` | empty (`REMOTE_ADDR`) | Header a trusted proxy sets to the visitor's address, e.g. `X-Real-IP`; used for sign-in limits and audit records |
 | `CODEGUARD_LOG_FORMAT` | `text` | `json` for one JSON object per log line |
@@ -341,7 +341,7 @@ Read the in-app **Methodology** page or [docs/architecture.md](docs/architecture
 - When `DEBUG` is off, the app turns on HTTPS redirect, secure cookies and HSTS, and requires `DJANGO_SECRET_KEY`. Deploy behind HTTPS only.
 - `check --deploy` leaves two intentional warnings: HSTS subdomains and preload. Enable them only if you control every subdomain.
 - Sign-in is throttled (5 failures per username or 20 per IP within 15 minutes) and every throttled attempt is audited.
-- The deployment is the tenancy boundary: "shared" means every account on this instance. Set `CODEGUARD_REGISTRATION` to `domain` or `closed` on any reachable deployment; `check --deploy` warns (`codeguard.W001`) otherwise.
+- The workspace is the tenancy boundary: "shared" means the members of your workspace, never another workspace. An account belongs to exactly one workspace. `check --deploy` warns (`codeguard.W001`) when sign-up is enabled but email is not delivered, because new accounts could never confirm their address.
 - Known limitations:
   - SQLite is tuned for a single host with a few workers (WAL, immediate transactions); beyond that, move to PostgreSQL (see [docs/architecture.md](docs/architecture.md), section 9).
   - Audit immutability is enforced by the application, not by the database.

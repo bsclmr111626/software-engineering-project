@@ -6,13 +6,19 @@ from django.core.checks import Tags, Warning, register
 
 @register(Tags.security, deploy=True)
 def open_registration(app_configs, **kwargs):
-    if settings.DEBUG or settings.CODEGUARD_REGISTRATION != "open":
+    """Open sign-up needs working email: an account cannot sign in until it
+    confirms its address, so without delivery nobody could finish signing up.
+    (Each sign-up gets its own workspace, so open sign-up no longer exposes
+    other people's shared work.)"""
+    from core.email import delivers_email
+
+    if settings.DEBUG or settings.CODEGUARD_REGISTRATION == "closed" or delivers_email():
         return []
     return [
         Warning(
-            "Self-registration is open: anyone who can reach this deployment can create an Analyst account "
-            "and read every shared scenario and report.",
-            hint="Set CODEGUARD_REGISTRATION=domain (with CODEGUARD_REGISTRATION_DOMAINS) or closed.",
+            "Self-registration is enabled but email is not delivered, so new accounts can never confirm "
+            "their address and sign in.",
+            hint="Configure email delivery, or set CODEGUARD_REGISTRATION=closed until it works.",
             id="codeguard.W001",
         )
     ]

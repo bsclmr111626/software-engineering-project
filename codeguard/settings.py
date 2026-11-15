@@ -132,18 +132,19 @@ LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:start"
 LOGOUT_REDIRECT_URL = "core:landing"
 
-# Role given to self-registered users. Only "analyst" or "viewer" are accepted;
-# administrators are promoted by an existing administrator.
+# Role of accounts created outside sign-up and invitations (the Django admin,
+# create_user). Only "analyst" or "viewer" are accepted. Someone who signs up
+# administers the new workspace they get; an invitation carries its own role.
 CODEGUARD_DEFAULT_ROLE = os.environ.get("CODEGUARD_DEFAULT_ROLE", "analyst")
 if CODEGUARD_DEFAULT_ROLE not in {"analyst", "viewer"}:
     raise ImproperlyConfigured("CODEGUARD_DEFAULT_ROLE must be 'analyst' or 'viewer'.")
 
-# Who may create an account. The deployment is the tenancy boundary (one
-# organization per instance; see docs/engineering-assessment.md, H2), so public
-# deployments should use "domain" or "closed".
-#   open   - anyone can register (local development, classroom demos)
+# Who may sign up. Each sign-up creates a workspace of its own (accounts/
+# workspaces.py), so a new account sees nobody else's work; it must confirm
+# its email address before it can sign in, so sign-up needs working email.
+#   open   - anyone can sign up
 #   domain - only email addresses in CODEGUARD_REGISTRATION_DOMAINS
-#   closed - no self-registration; administrators create accounts
+#   closed - by invitation only
 CODEGUARD_REGISTRATION = os.environ.get("CODEGUARD_REGISTRATION", "open").strip().lower()
 CODEGUARD_REGISTRATION_DOMAINS = [d.lower() for d in env_list("CODEGUARD_REGISTRATION_DOMAINS")]
 if CODEGUARD_REGISTRATION not in {"open", "domain", "closed"}:

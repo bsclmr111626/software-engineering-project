@@ -23,6 +23,7 @@ from core.email import delivers_email
 
 from . import emails
 from .models import AccountOrigin, Invitation, Profile, Role
+from .workspaces import workspace_of
 
 
 def _hash(token):
@@ -42,7 +43,13 @@ def _deliver(request, invitation, token):
     sent = emails.send(
         "invitation",
         invitation.email,
-        {"inviter": inviter, "role": Role(invitation.role).label, "link": link, "expires": invitation.expires_at},
+        {
+            "inviter": inviter,
+            "workspace": invitation.workspace.name,
+            "role": Role(invitation.role).label,
+            "link": link,
+            "expires": invitation.expires_at,
+        },
     )
     # A console backend "sends" by printing; that is not an email the invitee gets.
     sent = sent and delivers_email()
@@ -52,18 +59,24 @@ def _deliver(request, invitation, token):
     return link, sent
 
 
-def open_invitation_for(email):
-    return Invitation.objects.filter(email__iexact=email, accepted_at__isnull=True, revoked_at__isnull=True).first()
+def open_invitations(workspace):
+    return Invitation.objects.filter(workspace=workspace, accepted_at__isnull=True, revoked_at__isnull=True)
+
+
+def open_invitation_for(workspace, email):
+    return open_invitations(workspace).filter(email__iexact=email).first()
 
 
 def create(request, email, role):
-    """Invite ``email`` with ``role``. An open invitation for the same address
-    is reused with a fresh link. Returns (invitation, link, sent)."""
+    """Invite ``email`` to the inviter's workspace with ``role``. An open
+    invitation of that workspace for the same address is reused with a fresh
+    link. Returns (invitation, link, sent)."""
+    workspace = workspace_of(request.user)
     with transaction.atomic():
-        invitation = open_invitation_for(email)
+        invitation = open_invitation_for(workspace, email)
         created = invitation is None
         if created:
-            invitation = Invitation(email=email, role=role, invited_by=request.user)
+            invitation = Invitation(workspace=workspace, email=email, role=role, invited_by=request.user)
         else:
             invitation.role = role
         token = _new_token(invitation)
@@ -123,7 +136,12 @@ def accept(request, invitation, data):
         )
         Profile.objects.update_or_create(
             user=user,
-            defaults={"role": locked.role, "origin": AccountOrigin.INVITATION, "email_verified_at": timezone.now()},
+            defaults={
+                "workspace": locked.workspace,
+                "role": locked.role,
+                "origin": AccountOrigin.INVITATION,
+                "email_verified_at": timezone.now(),
+            },
         )
         locked.accepted_at = timezone.now()
         locked.accepted_user = user

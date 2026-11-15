@@ -10,6 +10,39 @@ class Role(models.TextChoices):
     VIEWER = "viewer", "Viewer"
 
 
+class Workspace(models.Model):
+    """A team's private space: the boundary for everything people share.
+
+    Every account belongs to exactly one workspace (``Profile.workspace``).
+    Shared scenarios and shared reports are visible inside their workspace
+    only; roles, the user list, invitations and the audit log are per
+    workspace too. The reference library (seeded scenarios, the control
+    catalog and the five stages) belongs to no workspace and is read by all.
+
+    ``is_default`` marks the workspace that receives accounts created outside
+    sign-up and invitations (createsuperuser, the Django admin) and that took
+    all data which existed before workspaces were introduced.
+    """
+
+    name = models.CharField(max_length=80)
+    is_default = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="workspaces_created"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_default"], condition=models.Q(is_default=True), name="one_default_workspace"
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class AccountOrigin(models.TextChoices):
     ADMIN = "admin", "Created by an administrator"
     SIGNUP = "signup", "Self-registration"
@@ -28,6 +61,7 @@ class Profile(models.Model):
     """
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    workspace = models.ForeignKey(Workspace, on_delete=models.PROTECT, related_name="profiles")
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.VIEWER)
     origin = models.CharField(max_length=12, choices=AccountOrigin.choices, default=AccountOrigin.ADMIN)
     email_verified_at = models.DateTimeField(null=True, blank=True)
@@ -164,6 +198,7 @@ class Invitation(models.Model):
     which invalidates the previous link.
     """
 
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="invitations")
     email = models.EmailField()
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.ANALYST)
     token_hash = models.CharField(max_length=64, unique=True)
@@ -184,8 +219,9 @@ class Invitation(models.Model):
         constraints = [
             models.UniqueConstraint(
                 Lower("email"),
+                "workspace",
                 condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True),
-                name="one_open_invitation_per_email",
+                name="one_open_invitation_per_email_and_workspace",
                 violation_error_message="There is already an open invitation for this address.",
             ),
             models.CheckConstraint(condition=models.Q(role__in=Role.values), name="invitation_role_valid"),

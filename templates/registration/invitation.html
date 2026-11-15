@@ -11,7 +11,7 @@
 <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">Sign out</button></form>
 {% else %}
 <h1>Join CodeGuard</h1>
-<p>You were invited as <strong>{{ invitation.get_role_display }}</strong>{% if invitation.invited_by %} by {{ invitation.invited_by.get_full_name|default:invitation.invited_by.get_username }}{% endif %}. Choose a username and password to create your account.</p>
+<p>You were invited to the <strong>{{ invitation.workspace.name }}</strong> workspace as <strong>{{ invitation.get_role_display }}</strong>{% if invitation.invited_by %} by {{ invitation.invited_by.get_full_name|default:invitation.invited_by.get_username }}{% endif %}. Choose a username and password to create your account.</p>
 {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
 <form method="post" novalidate data-loading>
   {% csrf_token %}

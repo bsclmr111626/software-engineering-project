@@ -7,13 +7,13 @@
 <p class="lede">What this CodeGuard deployment stores about you, why, who can see it and how to get it changed or removed. It describes what the software actually does; it is not a statement of compliance with any law.</p>
 
 <h2>Who is responsible</h2>
-<p>This deployment is run by its administrator, who decides who gets an account.{% if contact_email %} Contact: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} No contact address has been published for this deployment yet; ask the person who invited you.{% endif %}</p>
+<p>This deployment is run by its operator. Each team works in its own workspace, whose administrator decides who is invited to it.{% if contact_email %} Contact: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} No contact address has been published for this deployment yet; ask the person who invited you.{% endif %}</p>
 
 <h2>What is stored</h2>
 <ul>
   <li><strong>Account:</strong> username, email address, first and last name, a one-way hash of your password (never the password itself), role, how the account was created, whether and when your email address was confirmed, and an address you have asked to change to.</li>
   <li><strong>Profile and preferences:</strong> optional job title and team, and your display, accessibility and notification settings.</li>
-  <li><strong>Your work:</strong> scenarios you write, simulations you run and their reports, and remediation items. Reports you share are visible to every signed-in user of this deployment.</li>
+  <li><strong>Your work:</strong> scenarios you write, simulations you run and their reports, and remediation items. Reports and scenarios you share are visible to the members of your workspace, and to nobody in any other workspace.</li>
   <li><strong>Activity log:</strong> important actions (sign-ins, failed sign-ins, password and email changes, simulations, exports, sharing, role changes) with your username, the time, the object involved and your IP address. Passwords, tokens and session keys are never recorded. When you ask for a password reset or a confirmation email, a keyed fingerprint of the address is stored instead of the address.</li>
   <li><strong>Session:</strong> a session cookie and a security (CSRF) cookie, both needed to sign in. The session keeps when you signed in and a short browser description such as "Chrome on Windows", not the full browser string. Sessions end when you close the browser and after eight hours at most.</li>
   <li><strong>On your device:</strong> if you use the theme switch while signed out, your choice is kept in your browser's local storage. No advertising or analytics cookies are used.</li>
@@ -30,7 +30,7 @@
 <p>Pages load everything, including fonts and icons, from this site; your browser is not sent to any third party. Nothing is sold or shared for marketing.</p>
 
 <h2>Who can see it</h2>
-<p>You can see your own account, work and activity. Administrators of this deployment can see the user list, every user's activity log and shared reports. Private scenarios and unshared reports are visible only to their owner.</p>
+<p>You can see your own account, work and activity. The administrators of your workspace can see its member list, its members' activity log and what is shared in it; they cannot see other workspaces. The operator of the deployment has access to the database that holds all workspaces. Private scenarios and unshared reports are visible only to their owner.</p>
 
 <h2>How long it is kept</h2>
 <p>Account data and your work are kept while your account exists. Activity log entries are kept until an administrator removes old ones (the built-in retention command defaults to 365 days). Database backups are kept for a limited number of copies and then overwritten.</p>

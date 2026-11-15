@@ -30,11 +30,15 @@ def register(client, **extra):
 
 
 class TestRegistration:
-    def test_registration_creates_an_unconfirmed_account_with_the_default_role(self, client, mailoutbox):
-        response = register(client)
+    def test_registration_creates_an_unconfirmed_account_in_its_own_workspace(self, client, mailoutbox):
+        response = register(client, workspace_name="  Acme Security  ")
         assert response.status_code == 302 and response.url == reverse("accounts:check_email")
         user = User.objects.get(username="newuser")
-        assert get_role(user) == Role.ANALYST
+        # Whoever signs up administers a new workspace of their own, never an existing one.
+        assert get_role(user) == Role.ADMIN
+        workspace = user.profile.workspace
+        assert workspace.name == "Acme Security" and not workspace.is_default
+        assert workspace.profiles.count() == 1 and workspace.created_by == user
         assert user.profile.origin == "signup" and user.profile.email_verified_at is None
         assert "_auth_user_id" not in client.session  # not signed in until the address is confirmed
         assert AuditEvent.objects.filter(action=AuditAction.REGISTER, actor=user).exists()
@@ -42,10 +46,11 @@ class TestRegistration:
         assert "/accounts/confirm-email/" in mailoutbox[0].body
 
     def test_role_cannot_be_chosen_during_registration(self, client):
-        register(client, role="admin", is_superuser="on", is_staff="on")
+        register(client, role="viewer", is_superuser="on", is_staff="on", workspace="1")
         user = User.objects.get(username="newuser")
-        assert get_role(user) == Role.ANALYST
         assert not user.is_superuser and not user.is_staff
+        # Posted role and workspace values are ignored: a new workspace, administered by its creator.
+        assert get_role(user) == Role.ADMIN and not user.profile.workspace.is_default
 
     def test_weak_password_is_rejected(self, client):
         response = register(client, password1="password", password2="password")
@@ -278,8 +283,14 @@ class TestRegistrationPolicy:
     def test_open_registration_is_flagged_by_the_deploy_check(self, settings):
         from accounts.checks import open_registration
 
+        # Open sign-up is only a problem while email cannot be delivered,
+        # because new accounts must confirm their address to sign in.
         settings.DEBUG = False
         settings.CODEGUARD_REGISTRATION = "open"
+        settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
         assert [w.id for w in open_registration(None)] == ["codeguard.W001"]
         settings.CODEGUARD_REGISTRATION = "closed"
+        assert open_registration(None) == []
+        settings.CODEGUARD_REGISTRATION = "open"
+        settings.EMAIL_BACKEND = "core.email.BrevoEmailBackend"
         assert open_registration(None) == []

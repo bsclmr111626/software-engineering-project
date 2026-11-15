@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from accounts.permissions import is_admin
 from accounts.preferences import page_size
+from accounts.workspaces import workspace_of
 
 from .models import AuditAction, AuditEvent
 
@@ -42,10 +43,13 @@ CATEGORY = {
 
 @login_required
 def audit_log(request):
-    """Administrators see every event; other users see only their own."""
-    events = AuditEvent.objects.all()
-    if not is_admin(request.user):
-        events = events.filter(actor=request.user)
+    """Administrators see every event of their workspace; other users see only
+    their own. Events of other workspaces, and events that belong to no
+    workspace, are never shown here (platform staff use the Django admin)."""
+    if is_admin(request.user):
+        events = AuditEvent.objects.filter(workspace=workspace_of(request.user))
+    else:
+        events = AuditEvent.objects.filter(actor=request.user)
 
     action = request.GET.get("action", "")
     if action in AuditAction.values:

@@ -32,25 +32,40 @@ AUDIT_COLUMNS = [
     "metadata",
     "ip_address",
     "created_at",
+    "workspace_id",
 ]
 
 
 def _statements():
+    """(table, SQL) pairs. The update trigger is dropped and re-created each
+    time so a change to AUDIT_COLUMNS reaches databases that already have it."""
     from django.contrib.auth import get_user_model
 
     from .models import AuditEvent
 
-    audit = connection.ops.quote_name(AuditEvent._meta.db_table)
-    users = connection.ops.quote_name(get_user_model()._meta.db_table)
+    audit_table = AuditEvent._meta.db_table
+    user_table = get_user_model()._meta.db_table
+    audit = connection.ops.quote_name(audit_table)
+    users = connection.ops.quote_name(user_table)
     unchanged = " AND ".join(f"NEW.{c} IS OLD.{c}" for c in AUDIT_COLUMNS)
     return [
-        f"""CREATE TRIGGER IF NOT EXISTS audit_event_no_update BEFORE UPDATE ON {audit}
+        (audit_table, "DROP TRIGGER IF EXISTS audit_event_no_update"),
+        (
+            audit_table,
+            f"""CREATE TRIGGER audit_event_no_update BEFORE UPDATE ON {audit}
             WHEN NOT (NEW.actor_id IS NULL AND {unchanged})
             BEGIN SELECT RAISE(ABORT, 'audit events are append-only'); END""",
-        f"""CREATE TRIGGER IF NOT EXISTS audit_event_no_early_delete BEFORE DELETE ON {audit}
+        ),
+        (
+            audit_table,
+            f"""CREATE TRIGGER IF NOT EXISTS audit_event_no_early_delete BEFORE DELETE ON {audit}
             WHEN OLD.created_at > datetime('now', '-{MINIMUM_RETENTION_DAYS} days')
             BEGIN SELECT RAISE(ABORT, 'audit events are kept for at least {MINIMUM_RETENTION_DAYS} days'); END""",
-        f"CREATE UNIQUE INDEX IF NOT EXISTS accounts_user_email_ci_unique ON {users} (LOWER(email)) WHERE email <> ''",
+        ),
+        (
+            user_table,
+            f"CREATE UNIQUE INDEX IF NOT EXISTS accounts_user_email_ci_unique ON {users} (LOWER(email)) WHERE email <> ''",
+        ),
     ]
 
 
@@ -60,10 +75,19 @@ def install(**kwargs):
         return
     existing = set(connection.introspection.table_names())
     with connection.cursor() as cursor:
-        for statement in _statements():
-            table = statement.split(" ON ", 1)[1].split()[0].strip('"')
-            if table in existing:
-                cursor.execute(statement)
+        columns = (
+            {c.name for c in connection.introspection.get_table_description(cursor, "audit_auditevent")}
+            if "audit_auditevent" in existing
+            else set()
+        )
+        for table, statement in _statements():
+            if table not in existing:
+                continue
+            # Part-way through a migration run the audit table may not have every
+            # protected column yet; the run's final post_migrate installs it then.
+            if table == "audit_auditevent" and not set(AUDIT_COLUMNS) <= columns:
+                continue
+            cursor.execute(statement)
 
 
 def installed():

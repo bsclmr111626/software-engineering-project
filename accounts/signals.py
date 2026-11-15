@@ -17,13 +17,16 @@ from .preferences import (
     preferences_for,
 )
 from .throttling import canonical_username
+from .workspaces import default_workspace
 
 
 @receiver(post_save, sender=get_user_model())
 def create_profile(sender, instance, created, **kwargs):
     if created:
         role = Role.ADMIN if instance.is_superuser else settings.CODEGUARD_DEFAULT_ROLE
-        Profile.objects.get_or_create(user=instance, defaults={"role": role})
+        # Sign-up and invitations move the account to the right workspace straight
+        # after this; anything else (createsuperuser, the Django admin) stays here.
+        Profile.objects.get_or_create(user=instance, defaults={"role": role, "workspace": default_workspace()})
 
 
 @receiver(user_logged_in)

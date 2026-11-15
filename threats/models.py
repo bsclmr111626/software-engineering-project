@@ -106,6 +106,11 @@ class ThreatScenario(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name="scenarios"
     )
+    # NULL for the reference library (seeded scenarios), which every workspace
+    # reads. Otherwise the owner's workspace: "shared" means shared inside it.
+    workspace = models.ForeignKey(
+        "accounts.Workspace", null=True, blank=True, on_delete=models.PROTECT, related_name="scenarios"
+    )
     visibility = models.CharField(max_length=8, choices=Visibility.choices, default=Visibility.PRIVATE)
     status = models.CharField(max_length=8, choices=ScenarioStatus.choices, default=ScenarioStatus.ACTIVE)
     is_system = models.BooleanField(default=False, help_text="Seeded scenario; protected from deletion.")
@@ -127,6 +132,9 @@ class ThreatScenario(models.Model):
             ),
             models.CheckConstraint(
                 condition=Q(visibility="shared") | Q(owner__isnull=False), name="private_scenario_has_owner"
+            ),
+            models.CheckConstraint(
+                condition=Q(owner__isnull=True) | Q(workspace__isnull=False), name="owned_scenario_has_workspace"
             ),
         ]
 

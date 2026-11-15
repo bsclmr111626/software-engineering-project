@@ -32,7 +32,7 @@ process manager. Production values:
 | `DJANGO_BEHIND_PROXY` | `true` | Trusts `X-Forwarded-Proto` from the proxy so HTTPS is detected. Only set it when a proxy always overwrites that header. |
 | `DJANGO_HSTS_SECONDS` | `31536000` once HTTPS is stable | Start with `3600` while testing. |
 | `DJANGO_DB_PATH` | `/srv/codeguard/data/codeguard.sqlite3` | Keep the database outside the code directory. |
-| `CODEGUARD_REGISTRATION` | `domain` or `closed` | `open` lets anyone who can reach the site create an Analyst account; `check --deploy` warns about it (`codeguard.W001`). |
+| `CODEGUARD_REGISTRATION` | `closed` until email works, then your choice | Each sign-up gets its own private workspace and must confirm its email before signing in. `check --deploy` warns (`codeguard.W001`) when sign-up is enabled but email is not delivered. |
 | `CODEGUARD_REGISTRATION_DOMAINS` | e.g. `example.edu` | Required with `domain`. |
 | `CODEGUARD_LOG_FORMAT` | `json` | One JSON object per line for log collectors. |
 | `CODEGUARD_LOGIN_MAX_FAILURES`, `CODEGUARD_LOGIN_IP_MAX_FAILURES`, `CODEGUARD_LOGIN_LOCKOUT_MINUTES` | defaults 5, 20, 15 | Sign-in throttling. Raise the IP limit if many users share one NAT address. |
@@ -51,8 +51,8 @@ python manage.py createsuperuser         # first administrator
 python manage.py collectstatic --noinput # writes staticfiles/ for the proxy to serve
 ```
 
-With `CODEGUARD_REGISTRATION=closed`, administrators create further accounts in the Django
-admin (`/admin/`) and assign roles on **Users and roles**.
+With `CODEGUARD_REGISTRATION=closed`, workspace administrators invite people from
+**Settings > Members and roles**; each invitation carries a role and joins that workspace.
 
 ## 4. Running the application (example, not tested here)
 
@@ -259,10 +259,14 @@ likely to land in spam; SPF, DKIM and DMARC records need a custom domain.
 Until email works, invitations still work: the Users page shows each invitation link once, to
 copy and send by hand.
 
-**Access.** Keep `CODEGUARD_REGISTRATION=closed` and invite people from Settings > Users.
-Self-registration with email confirmation exists, but every account on an instance can read
-every shared report, so open sign-up waits for workspaces
-(`docs/PRODUCT_AND_ENGINEERING_AUDIT.md`, section 7).
+**Access and workspaces.** Every account belongs to one workspace, and shared scenarios and
+reports are visible inside it only. Everything that existed before workspaces is in the
+default workspace (named CodeGuard; rename it under Settings > Workspace). Keep
+`CODEGUARD_REGISTRATION=closed` and invite people until email delivery works; after that
+`open` or `domain` is safe to enable, because each sign-up gets a new, empty workspace of its
+own. Accounts made with `createsuperuser` or in the Django admin land in the default
+workspace. A superuser sees deployment-wide settings on the Workspace page and manages
+other workspaces only through the Django admin.
 
 **Free-plan limits.** One web app, 512 MB of disk, 100 console CPU-seconds a day (consoles slow
 down rather than stop), outbound internet from code limited to allow-listed sites, no custom

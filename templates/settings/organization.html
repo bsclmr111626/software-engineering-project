@@ -1,26 +1,44 @@
 {% extends "layouts/settings.html" %}
-{% block title %}Organization · Settings{% endblock %}
-{% block settings_title %}Organization{% endblock %}
+{% block title %}Workspace · Settings{% endblock %}
+{% block settings_title %}Workspace{% endblock %}
 {% block settings_body %}
-<header><h1>Organization</h1><p>Policies that apply to everyone on this CodeGuard deployment. They are set by environment variables at deploy time (see <code>docs/deployment.md</code>), so they are shown here read-only and cannot be changed from the browser.</p></header>
+<header><h1>Workspace</h1><p>Your team's private space. Shared scenarios and shared reports are visible to its members only; nobody in another workspace can see them, and you cannot see theirs.</p></header>
+<section class="cg-settings-section" aria-labelledby="name-h">
+  <h2 id="name-h">Name</h2>
+  <form method="post" novalidate data-loading>
+    {% csrf_token %}
+    {% for field in form %}{% include "components/field.html" %}{% endfor %}
+    <div class="cg-form-actions"><button class="btn btn-primary" type="submit"><span class="btn-label">Save name</span><span class="btn-loading">Saving…</span></button></div>
+  </form>
+</section>
 <section class="cg-settings-section" aria-labelledby="people-h">
   <h2 id="people-h">People</h2>
   <div class="cg-metrics">
-    <div class="cg-metric"><div class="cg-metric-label">Users</div><div class="cg-metric-value">{{ user_total }}</div></div>
+    <div class="cg-metric"><div class="cg-metric-label">Members</div><div class="cg-metric-value">{{ user_total }}</div></div>
     {% for label, count in role_counts %}<div class="cg-metric"><div class="cg-metric-label">{{ label }}s</div><div class="cg-metric-value">{{ count }}</div></div>{% endfor %}
   </div>
-  <p class="mt-3"><a class="cg-more-link" href="{% url 'settings:users' %}">Manage users and roles <i class="bi bi-arrow-right" aria-hidden="true"></i></a></p>
+  <p class="mt-3"><a class="cg-more-link" href="{% url 'settings:users' %}">Invite and manage members <i class="bi bi-arrow-right" aria-hidden="true"></i></a></p>
 </section>
-<section class="cg-settings-section" aria-labelledby="reg-h">
-  <h2 id="reg-h">Sign-up and access</h2>
+<section class="cg-settings-section" aria-labelledby="policy-h">
+  <h2 id="policy-h">Sign-in rules</h2>
+  <p class="cg-section-help">These apply to every workspace on this CodeGuard deployment and are set by its operator.</p>
   <dl class="cg-ledger">
-    <dt>Self-registration</dt><dd>{% if registration == 'open' %}Open to anyone{% elif registration == 'domain' %}Limited to {{ registration_domains|join:", " }}{% else %}Closed: administrators create accounts{% endif %} <code class="ms-1">CODEGUARD_REGISTRATION</code></dd>
-    <dt>Role for new accounts</dt><dd>{{ default_role }} <code class="ms-1">CODEGUARD_DEFAULT_ROLE</code></dd>
-    <dt>Sign-in throttling</dt><dd>{{ lockout_failures }} failures per username or {{ lockout_ip_failures }} per IP address, then {{ lockout_minutes }} minutes</dd>
+    <dt>Sign-in throttling</dt><dd>{{ lockout_failures }} failures per account or {{ lockout_ip_failures }} per IP address, then {{ lockout_minutes }} minutes</dd>
     <dt>Session lifetime</dt><dd>{{ session_hours }} hours{% if expires_at_close %}, and ends when the browser closes{% endif %}</dd>
-    <dt>Visitor address read from</dt><dd>{{ client_ip_source }}</dd>
-    <dt>Email delivery</dt><dd>{{ email_backend }}</dd>
-    <dt>Email sender</dt><dd>{{ from_email }}</dd>
   </dl>
 </section>
+{% if deployment %}
+<section class="cg-settings-section" aria-labelledby="deploy-h">
+  <h2 id="deploy-h">Deployment</h2>
+  <p class="cg-section-help">Visible to platform administrators only. Set by environment variables at deploy time (see <code>docs/deployment.md</code>).</p>
+  <dl class="cg-ledger">
+    <dt>Self-registration</dt><dd>{% if deployment.registration == 'open' %}Open: each sign-up gets its own workspace{% elif deployment.registration == 'domain' %}Limited to {{ deployment.registration_domains|join:", " }}{% else %}Closed: by invitation only{% endif %} <code class="ms-1">CODEGUARD_REGISTRATION</code></dd>
+    <dt>Workspaces</dt><dd>{{ deployment.workspace_total }}</dd>
+    <dt>Accounts</dt><dd>{{ deployment.account_total }}</dd>
+    <dt>Visitor address read from</dt><dd>{{ deployment.client_ip_source }}</dd>
+    <dt>Email delivery</dt><dd>{{ deployment.email_backend }}</dd>
+    <dt>Email sender</dt><dd>{{ deployment.from_email }}</dd>
+  </dl>
+</section>
+{% endif %}
 {% endblock %}

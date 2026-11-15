@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.urls import reverse
@@ -257,10 +258,28 @@ class TestScenarioPermissions:
         assert admin_client.post(reverse("threats:delete", args=["malicious-dependency"])).status_code == 403
         assert ThreatScenario.objects.filter(slug="malicious-dependency").exists()
 
-    def test_admin_can_edit_and_archive_shared_scenario(self, seeded, admin_client):
-        assert admin_client.get(reverse("threats:edit", args=["malicious-dependency"])).status_code == 200
-        admin_client.post(reverse("threats:archive", args=["malicious-dependency"]))
+    def test_workspace_admin_cannot_change_the_reference_library(self, seeded, admin_client):
+        """Reference scenarios are read by every workspace, so one workspace's
+        administrator must not be able to edit or archive them for everyone."""
+        assert admin_client.get(reverse("threats:edit", args=["malicious-dependency"])).status_code == 403
+        assert admin_client.post(reverse("threats:archive", args=["malicious-dependency"])).status_code == 403
+        assert ThreatScenario.objects.get(slug="malicious-dependency").status == ScenarioStatus.ACTIVE
+
+    def test_platform_admin_can_edit_and_archive_a_reference_scenario(self, seeded, client):
+        root = get_user_model().objects.create_superuser("root", "root@example.com", "Str0ng-test-passphrase!")
+        client.force_login(root)
+        assert client.get(reverse("threats:edit", args=["malicious-dependency"])).status_code == 200
+        client.post(reverse("threats:archive", args=["malicious-dependency"]))
         assert ThreatScenario.objects.get(slug="malicious-dependency").status == ScenarioStatus.ARCHIVED
+
+    def test_workspace_admin_can_edit_and_archive_a_scenario_shared_in_their_workspace(
+        self, seeded, admin_client, admin_user
+    ):
+        shared = clone_scenario(ThreatScenario.objects.get(slug="malicious-dependency"), admin_user)
+        ThreatScenario.objects.filter(pk=shared.pk).update(visibility=Visibility.SHARED)
+        assert admin_client.get(reverse("threats:edit", args=[shared.slug])).status_code == 200
+        admin_client.post(reverse("threats:archive", args=[shared.slug]))
+        assert ThreatScenario.objects.get(pk=shared.pk).status == ScenarioStatus.ARCHIVED
 
     def test_viewer_cannot_create_or_clone(self, seeded, viewer_client):
         assert viewer_client.get(reverse("threats:create")).status_code == 403

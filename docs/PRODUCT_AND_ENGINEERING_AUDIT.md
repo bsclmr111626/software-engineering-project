@@ -356,6 +356,39 @@ Not done: a visual review (screenshots could not be taken in this session), the 
 viewer roles, pages that need data (a report, a comparison, a remediation item), dark theme, and
 screen-reader testing.
 
+Phase 2 and the font change were deployed on 2026-11-14.
+
+### Phase 3: workspaces (in the repository, not yet deployed)
+
+Option 3 of section 7, with one simplification: an account belongs to exactly one workspace.
+
+| Area | What changed |
+|---|---|
+| Model | `accounts.Workspace`; `Profile.workspace` (required); `workspace` on scenarios (empty for the reference library), simulation runs, invitations and audit events |
+| Existing data | One default workspace receives every existing account, scenario, run, invitation and audit event. Rehearsed on a copy of the local database: 18 accounts, 29 runs, 11 scenarios and 272 audit events before and after, nothing lost |
+| Scenarios | The six reference scenarios belong to no workspace and are read by all; only a superuser can edit or archive them (a workspace administrator could before). Shared scenarios are visible in their workspace only |
+| Reports | A shared report is visible in its workspace only; lists, comparisons, exports, charts, analytics and the dashboard follow the same rule because they all use `accessible_runs` |
+| Members | Administrators see, invite and manage their own workspace's members only. The same address can be invited by two workspaces; the first accepted wins |
+| Audit log | Events carry their workspace; an administrator reads their workspace's events only. Failed sign-ins are filed under the workspace of the account they targeted |
+| Sign-up | Creates a new workspace and makes its creator the administrator of it. It can never join or see an existing workspace |
+| Settings | The Organization page is now the Workspace page: rename, member counts. Deployment-wide details are shown to superusers only |
+
+Evidence: `tests/test_workspace_isolation.py` (39 tests) puts a second workspace beside the
+default one and requests every scenario, report, chart, export, remediation, member,
+invitation and audit URL across the boundary, expecting 404 and no change. Removing the
+workspace filter from `accessible_runs` makes 6 of them fail, and from `visible_scenarios` 10.
+
+Limits, by choice:
+
+- One workspace per account; no switching and no guest access to a second workspace.
+- No page to move a member to another workspace, merge workspaces or delete a workspace.
+- Shared scenarios and reports still belong to the person who made them and are deleted with
+  that account (P1-7); they are not yet owned by the workspace.
+- The operator, and any superuser through the Django admin, can read every workspace.
+- Isolation is enforced in application queries, not by the database; a new query that skips
+  `accessible_runs`, `visible_scenarios` or `workspace_of` would not be caught by the database.
+- Public sign-up still needs email delivery on the live instance before it can be switched on.
+
 ## 14. What this audit could not verify
 
 - Anything behind sign-in on the live site, including which accounts exist.

@@ -15,6 +15,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from audit.models import AuditAction
@@ -30,12 +31,10 @@ def refusal(user):
         return "Superuser accounts are removed with manage.py, not from CodeGuard."
     profile = getattr(user, "profile", None)
     if profile is not None and profile.role == Role.ADMIN:
-        others = (
-            Profile.objects.filter(role=Role.ADMIN, user__is_active=True).exclude(user=user).exists()
-            or get_user_model().objects.filter(is_superuser=True, is_active=True).exclude(pk=user.pk).exists()
-        )
-        if not others:
-            return "You are the only administrator. Make someone else an administrator first."
+        colleagues = Profile.objects.filter(workspace_id=profile.workspace_id, user__is_active=True).exclude(user=user)
+        # Alone in the workspace: nobody is left without an administrator.
+        if colleagues.exists() and not colleagues.filter(Q(role=Role.ADMIN) | Q(user__is_superuser=True)).exists():
+            return "You are the only administrator of this workspace. Make someone else an administrator first."
     return None
 
 
@@ -89,11 +88,13 @@ def delete_closed(user):
     username = user.get_username()
     counts = owned_counts(user)
     closed_at = user.profile.closed_at
+    workspace = user.profile.workspace
     with transaction.atomic():
         user.delete()
         record_event(
             None,
             AuditAction.ACCOUNT_DELETE,
+            workspace=workspace,
             username=username,
             closed_at=closed_at.isoformat() if closed_at else "",
             **counts,

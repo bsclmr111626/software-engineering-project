@@ -30,7 +30,7 @@
       <h1 id="doc-title" class="display">{{ run.scenario_name }}</h1>
       <dl class="cg-ledger cg-ledger--compact mt-4 mb-0">
         <dt>Executed</dt><dd>{{ run.created_at|date:"Y-m-d H:i" }} UTC by {{ run.user.get_username }}</dd>
-        <dt>Status</dt><dd>{{ run.get_status_display }}{% if run.is_shared %} · shared with all users{% endif %}</dd>
+        <dt>Status</dt><dd>{{ run.get_status_display }}{% if run.is_shared %} · shared with your workspace{% endif %}</dd>
         <dt>Scenario version</dt><dd>{{ run.scenario_version }}{% if scenario_changed %} (the scenario has since changed; this report uses the stored snapshot){% endif %}</dd>
         <dt>Entry point</dt><dd>{{ run.entry_stage_name }}</dd>
       </dl>

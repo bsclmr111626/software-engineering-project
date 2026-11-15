@@ -65,7 +65,8 @@ class TestClosing:
         html = analyst_client.get(URL).content.decode()
         assert "1 simulation run" in html and "including 1 that other people can currently read" in html
 
-    def test_superuser_and_only_admin_are_refused(self, admin_client, admin_user, client):
+    def test_superuser_and_only_admin_are_refused(self, admin_client, admin_user, analyst):
+        # ``analyst`` is a colleague in the same workspace who would be left without an administrator.
         html = admin_client.get(URL).content.decode()
         assert "only administrator" in html
         close(admin_client)
@@ -74,7 +75,13 @@ class TestClosing:
         root = User.objects.create_superuser("root", "root@example.com", PASSWORD)
         assert "manage.py" in closure.refusal(root)
 
-    def test_an_admin_can_close_when_another_admin_exists(self, admin_client, admin_user):
+    def test_an_admin_alone_in_their_workspace_can_close(self, admin_client, admin_user):
+        assert closure.refusal(admin_user) is None
+        assert close(admin_client).status_code == 302
+        admin_user.refresh_from_db()
+        assert not admin_user.is_active
+
+    def test_an_admin_can_close_when_another_admin_exists(self, admin_client, admin_user, analyst):
         User.objects.create_superuser("root", "root@example.com", PASSWORD)
         assert close(admin_client).status_code == 302
         admin_user.refresh_from_db()

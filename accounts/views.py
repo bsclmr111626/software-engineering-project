@@ -15,14 +15,15 @@ from django.views.decorators.http import require_POST
 from audit.models import AuditAction, AuditEvent
 from audit.services import client_ip, record_event
 
-from . import closure, emails, invitations, lifecycle
+from . import closure, emails, invitations, lifecycle, workspaces
 from .forms import AcceptInvitationForm, EmailForm, InvitationForm, RegistrationForm, RoleForm, UserFilterForm
-from .models import AccountOrigin, Invitation, Profile, Role
+from .models import AccountOrigin, Profile, Role
 from .permissions import admin_required, get_role, registration_open
 from .preferences import page_size, preferences_for
 from .settings_views import settings_nav
 from .throttling import recent_events
 from .tokens import email_fingerprint, read_token
+from .workspaces import workspace_of
 
 logger = logging.getLogger("codeguard.accounts")
 
@@ -65,13 +66,17 @@ def _create_signup_account(request, form, email):
     if existing is None:
         try:
             with transaction.atomic():
-                user = form.save()  # the post_save signal creates the profile with the default role
-                Profile.objects.filter(user=user).update(origin=AccountOrigin.SIGNUP)
+                user = form.save()  # the post_save signal creates the profile
+                # Whoever signs up gets a workspace of their own and administers it;
+                # nothing in any other workspace is visible to them.
+                workspaces.create_for(user, form.cleaned_data.get("workspace_name") or "")
+                Profile.objects.filter(user=user).update(origin=AccountOrigin.SIGNUP, role=Role.ADMIN)
         except IntegrityError:  # another sign-up took the address a moment ago
             existing = User.objects.filter(email__iexact=email).first()
         else:
             user.refresh_from_db()
             record_event(user, AuditAction.REGISTER, target=user, request=request, role=get_role(user))
+            record_event(user, AuditAction.WORKSPACE_CREATE, target=workspace_of(user), request=request)
             lifecycle.send_confirmation(request, user, email)
             return
     if existing is not None:
@@ -230,15 +235,21 @@ class AuditedPasswordResetConfirmView(PasswordResetConfirmView):
 # --- User management (administrators) -------------------------------------------------
 
 
+def _members(request):
+    """Accounts an administrator may see and manage: their own workspace's.
+    An id from another workspace is a 404, like one that does not exist."""
+    return workspaces.members(workspace_of(request.user))
+
+
 def _admin_context(request, page, **extra):
     return {"settings_page": page, "settings_groups": settings_nav(request.user), **extra}
 
 
 @admin_required
 def user_list(request):
-    User = get_user_model()
+    workspace = workspace_of(request.user)
     filters = UserFilterForm(request.GET or None)
-    users = User.objects.select_related("profile").order_by("username")
+    users = workspaces.members(workspace).select_related("profile").order_by("username")
     if filters.is_valid():
         q = filters.cleaned_data["q"].strip()
         if q:
@@ -273,9 +284,8 @@ def user_list(request):
             roles=Role.choices,
             filters=filters,
             invite_form=InvitationForm(),
-            invitations=Invitation.objects.filter(accepted_at__isnull=True, revoked_at__isnull=True).select_related(
-                "invited_by"
-            ),
+            invitations=invitations.open_invitations(workspace).select_related("invited_by"),
+            workspace=workspace,
             invitation_link=request.session.pop(INVITE_LINK_SESSION_KEY, None),
             invitation_days=settings.CODEGUARD_INVITATION_DAYS,
         ),
@@ -284,8 +294,8 @@ def user_list(request):
 
 @admin_required
 def user_detail(request, user_id):
-    target = get_object_or_404(get_user_model().objects.select_related("profile"), pk=user_id)
-    profile, _ = Profile.objects.get_or_create(user=target)
+    target = get_object_or_404(_members(request).select_related("profile"), pk=user_id)
+    profile = target.profile
     return render(
         request,
         "settings/user_detail.html",
@@ -298,14 +308,16 @@ def user_detail(request, user_id):
             roles=Role.choices,
             can_manage=target != request.user and not target.is_superuser,
             deletion_date=closure.deletion_date(profile),
-            events=AuditEvent.objects.filter(Q(actor=target) | Q(object_type="User", object_id=str(target.pk)))[:25],
+            events=AuditEvent.objects.filter(workspace=workspace_of(request.user)).filter(
+                Q(actor=target) | Q(object_type="User", object_id=str(target.pk))
+            )[:25],
         ),
     )
 
 
 def _manageable(request, user_id):
     """The target of a suspend/reactivate/role action, or a redirect explaining why not."""
-    target = get_object_or_404(get_user_model(), pk=user_id)
+    target = get_object_or_404(_members(request), pk=user_id)
     if target == request.user:
         messages.error(request, "You cannot change your own account here; ask another administrator.")
         return target, redirect("settings:user_detail", target.pk)
@@ -352,7 +364,7 @@ def reactivate_user(request, user_id):
 @require_POST
 def send_password_reset(request, user_id):
     """Email the user a reset link. The administrator never sees a password."""
-    target = get_object_or_404(get_user_model(), pk=user_id, is_active=True)
+    target = get_object_or_404(_members(request), pk=user_id, is_active=True)
     if not target.email:
         messages.error(request, "This account has no email address.")
         return redirect("settings:user_detail", target.pk)
@@ -375,7 +387,7 @@ def send_password_reset(request, user_id):
 @admin_required
 @require_POST
 def change_role(request, user_id):
-    target = get_object_or_404(get_user_model(), pk=user_id)
+    target = get_object_or_404(_members(request), pk=user_id)
     back = request.POST.get("next") == "detail"
     destination = redirect("settings:user_detail", target.pk) if back else redirect("settings:users")
     form = RoleForm(request.POST)
@@ -425,7 +437,7 @@ def invite(request):
 @admin_required
 @require_POST
 def resend_invitation(request, invitation_id):
-    invitation = get_object_or_404(Invitation, pk=invitation_id, accepted_at__isnull=True, revoked_at__isnull=True)
+    invitation = get_object_or_404(invitations.open_invitations(workspace_of(request.user)), pk=invitation_id)
     link, sent = invitations.resend(request, invitation)
     _report_invitation(request, invitation, link, sent)
     return redirect("settings:users")
@@ -434,7 +446,7 @@ def resend_invitation(request, invitation_id):
 @admin_required
 @require_POST
 def revoke_invitation(request, invitation_id):
-    invitation = get_object_or_404(Invitation, pk=invitation_id, accepted_at__isnull=True, revoked_at__isnull=True)
+    invitation = get_object_or_404(invitations.open_invitations(workspace_of(request.user)), pk=invitation_id)
     invitations.revoke(request, invitation)
     messages.success(request, f"The invitation for {invitation.email} was revoked; its link no longer works.")
     return redirect("settings:users")

@@ -42,6 +42,8 @@ class AuditAction(models.TextChoices):
     USER_REACTIVATE = "user_reactivate", "Reactivated a user"
     ACCOUNT_CLOSE = "account_close", "Closed their account"
     ACCOUNT_DELETE = "account_delete", "Deleted a closed account"
+    WORKSPACE_CREATE = "workspace_create", "Created a workspace"
+    WORKSPACE_UPDATE = "workspace_update", "Renamed the workspace"
 
 
 class AppendOnlyQuerySet(models.QuerySet):
@@ -75,6 +77,11 @@ class AuditEvent(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="audit_events"
     )
     actor_username = models.CharField(max_length=150, blank=True)
+    # The workspace the event belongs to, so its administrators can read it.
+    # NULL for events with no account behind them (an unknown sign-in name).
+    workspace = models.ForeignKey(
+        "accounts.Workspace", null=True, blank=True, on_delete=models.PROTECT, related_name="audit_events"
+    )
     action = models.CharField(max_length=32, choices=AuditAction.choices, db_index=True)
     object_type = models.CharField(max_length=64, blank=True)
     object_id = models.CharField(max_length=64, blank=True)
@@ -87,7 +94,10 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
-        indexes = [models.Index(fields=["actor", "-created_at"])]
+        indexes = [
+            models.Index(fields=["actor", "-created_at"]),
+            models.Index(fields=["workspace", "-created_at"]),
+        ]
 
     def __str__(self):
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.actor_username or 'anonymous'} {self.action}"

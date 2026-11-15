@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.http import Http404
 from django.utils import timezone
 
+from accounts.workspaces import workspace_of
 from audit.models import AuditAction
 from audit.services import record_event
 from threats.models import SecurityControl, SupplyChainStage
@@ -142,6 +143,7 @@ def run_simulation(user, scenario, *, likelihood, severity, impact, threshold, c
 
     run = SimulationRun.objects.create(
         user=user,
+        workspace=workspace_of(user),
         scenario=scenario,
         scenario_name=scenario.name,
         scenario_slug=scenario.slug,
@@ -239,10 +241,11 @@ def _execute(run, inp, applicable):
 
 
 def accessible_runs(user):
-    """Runs the user owns plus completed runs other users chose to share."""
-    return SimulationRun.objects.filter(Q(user=user) | Q(is_shared=True, status=RunStatus.COMPLETED)).select_related(
-        "user"
-    )
+    """Runs the user owns, plus completed runs that other members of the same
+    workspace chose to share. Never a run from another workspace."""
+    return SimulationRun.objects.filter(
+        Q(user=user) | Q(workspace=workspace_of(user), is_shared=True, status=RunStatus.COMPLETED)
+    ).select_related("user")
 
 
 def get_accessible_run(user, run_id):

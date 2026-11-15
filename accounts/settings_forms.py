@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 
 from core.forms import BootstrapFormMixin
 
-from .models import Profile, UserPreference
+from .models import Profile, UserPreference, Workspace
 
 
 class ProfileForm(BootstrapFormMixin, forms.ModelForm):
@@ -100,6 +100,20 @@ class CloseAccountForm(BootstrapFormMixin, forms.Form):
         return password
 
 
+class WorkspaceForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Workspace
+        fields = ["name"]
+        labels = {"name": "Workspace name"}
+        help_texts = {"name": "Shown to members and in invitation emails."}
+
+    def clean_name(self):
+        name = " ".join(self.cleaned_data["name"].split())
+        if not name:
+            raise forms.ValidationError("Enter a name.")
+        return name
+
+
 class PreferenceForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = UserPreference
@@ -168,7 +182,7 @@ class NotificationForm(PreferenceForm):
             "notify_account_security": "Account security events",
         }
         help_texts = {
-            "notify_shared_reports": "When another user shares a simulation report with everyone.",
+            "notify_shared_reports": "When a colleague shares a simulation report with your workspace.",
             "notify_remediation_due": "Your open remediation items that are overdue or due within 7 days.",
             "notify_account_security": "Password and email changes, role changes, signed-out sessions and failed sign-ins to your account.",
         }
@@ -178,8 +192,8 @@ class PrivacyForm(PreferenceForm):
     class Meta:
         model = UserPreference
         fields = ["share_reports_by_default"]
-        labels = {"share_reports_by_default": "Share new reports with all users"}
+        labels = {"share_reports_by_default": "Share new reports with my workspace"}
         help_texts = {
-            "share_reports_by_default": "When on, each completed simulation you run is shared read-only with every "
-            "CodeGuard user as soon as it finishes. You can make any report private again from the report.",
+            "share_reports_by_default": "When on, each completed simulation you run is shared read-only with the "
+            "members of your workspace as soon as it finishes. You can make any report private again from the report.",
         }

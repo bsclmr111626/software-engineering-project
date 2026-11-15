@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.preferences import preferences_for
+from accounts.workspaces import workspace_of
 from audit.models import AuditAction, AuditEvent
 from remediation.models import ACTIVE_STATUSES, RemediationItem
 from simulation.models import RunStatus, SimulationRun
@@ -36,14 +37,21 @@ class Notification:
 
 def _shared_reports(user, since):
     events = (
-        AuditEvent.objects.filter(action=AuditAction.REPORT_SHARE, created_at__gte=since, metadata__shared=True)
+        AuditEvent.objects.filter(
+            action=AuditAction.REPORT_SHARE,
+            workspace=workspace_of(user),
+            created_at__gte=since,
+            metadata__shared=True,
+        )
         .exclude(actor=user)
         .order_by("-created_at")[:LIMIT]
     )
     latest = {}
     for event in events:
         latest.setdefault(event.object_id, event)
-    runs = SimulationRun.objects.filter(pk__in=list(latest), is_shared=True, status=RunStatus.COMPLETED)
+    runs = SimulationRun.objects.filter(
+        pk__in=list(latest), workspace=workspace_of(user), is_shared=True, status=RunStatus.COMPLETED
+    )
     for run in runs:
         event = latest[str(run.pk)]
         yield Notification(

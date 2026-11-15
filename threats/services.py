@@ -2,11 +2,15 @@
 
 Ownership rules
 ---------------
-* Shared scenarios (including the seeded system scenarios) are visible to all
-  authenticated users. Private scenarios are visible only to their owner.
+* The reference library (seeded system scenarios, which have no workspace)
+  is visible to every signed-in user.
+* A shared scenario is visible to everyone in its workspace and to nobody
+  outside it. Private scenarios are visible only to their owner.
 * Analysts may edit, archive and delete their own private scenarios.
-* Administrators may additionally manage shared scenarios.
-* System (seeded) scenarios can be archived but never deleted.
+* Workspace administrators may additionally manage their workspace's shared
+  scenarios.
+* Reference scenarios can be changed only by a platform administrator
+  (superuser), and can be archived but never deleted.
 """
 
 from django.db import transaction
@@ -16,14 +20,17 @@ from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 
 from accounts.permissions import can_manage_scenarios, is_admin
+from accounts.workspaces import workspace_id_of, workspace_of
 
 from .models import PropagationRule, ScenarioControl, ScenarioStatus, ThreatScenario, Visibility
 
 
 def visible_scenarios(user):
-    return ThreatScenario.objects.filter(Q(visibility=Visibility.SHARED) | Q(owner=user)).select_related(
-        "initial_stage", "owner"
-    )
+    return ThreatScenario.objects.filter(
+        Q(workspace__isnull=True, visibility=Visibility.SHARED)
+        | Q(workspace=workspace_of(user), visibility=Visibility.SHARED)
+        | Q(owner=user)
+    ).select_related("initial_stage", "owner")
 
 
 def get_visible_scenario(user, slug):
@@ -36,6 +43,11 @@ def get_visible_scenario(user, slug):
 
 def can_edit(user, scenario):
     if not can_manage_scenarios(user):
+        return False
+    if scenario.workspace_id is None:
+        # The reference library is shared by every workspace.
+        return user.is_superuser
+    if scenario.workspace_id != workspace_id_of(user):
         return False
     if scenario.visibility == Visibility.SHARED:
         return is_admin(user)
@@ -62,6 +74,7 @@ def save_scenario(form, rule_formset, user):
     if creating:
         scenario.slug = unique_slug(scenario.name)
         scenario.owner = user
+        scenario.workspace = workspace_of(user)
     else:
         scenario.version += 1
     if not is_admin(user):
@@ -90,6 +103,7 @@ def clone_scenario(scenario, user):
     clone.name = f"{scenario.name} (copy)"[:120]
     clone.slug = unique_slug(clone.name)
     clone.owner = user
+    clone.workspace = workspace_of(user)
     clone.visibility = Visibility.PRIVATE
     clone.status = ScenarioStatus.ACTIVE
     clone.is_system = False

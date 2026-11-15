@@ -59,8 +59,9 @@ class TermsMixin(forms.Form):
 
 
 class RegistrationForm(BootstrapFormMixin, UserCreationForm):
-    """Public sign-up form. It deliberately has no role field: the role is
-    assigned on the server (CODEGUARD_DEFAULT_ROLE) and can never be admin.
+    """Public sign-up form. It has no role field: whoever signs up gets a new
+    workspace of their own and administers it (accounts/views.register), and
+    can never gain access to another workspace or platform administration.
 
     It does not say whether an email address is already registered; the view
     emails the owner of that address instead (accounts/views.register).
@@ -78,6 +79,13 @@ class RegistrationForm(BootstrapFormMixin, UserCreationForm):
         help_text="We will send a link to confirm it. It is also where password reset links go.",
         widget=forms.EmailInput(attrs={"autocomplete": "email"}),
     )
+    workspace_name = forms.CharField(
+        max_length=80,
+        required=False,
+        label="Team or organization",
+        help_text="Names your private workspace. You can invite colleagues to it and rename it later.",
+        widget=forms.TextInput(attrs={"autocomplete": "organization"}),
+    )
     accept_terms = TermsMixin.base_fields["accept_terms"]
     website = forms.CharField(required=False, label="Leave this field empty")
 
@@ -85,7 +93,17 @@ class RegistrationForm(BootstrapFormMixin, UserCreationForm):
         model = get_user_model()
         fields = ("first_name", "last_name", "username", "email")
 
-    field_order = ["first_name", "last_name", "email", "username", "password1", "password2", "accept_terms", "website"]
+    field_order = [
+        "first_name",
+        "last_name",
+        "email",
+        "workspace_name",
+        "username",
+        "password1",
+        "password2",
+        "accept_terms",
+        "website",
+    ]
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()

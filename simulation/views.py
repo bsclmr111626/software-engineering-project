@@ -349,7 +349,7 @@ def toggle_share(request, run_id):
     run.is_shared = not run.is_shared
     run.save(update_fields=["is_shared"])
     record_event(request.user, AuditAction.REPORT_SHARE, target=run, request=request, shared=run.is_shared)
-    messages.success(request, "Report shared with all users." if run.is_shared else "Report is now private.")
+    messages.success(request, "Report shared with your workspace." if run.is_shared else "Report is now private.")
     return redirect("simulation:detail", run_id=run.id)
 
 

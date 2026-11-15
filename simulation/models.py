@@ -22,6 +22,8 @@ class SimulationRun(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="simulation_runs")
+    # The owner's workspace when the run was made; a shared report is visible inside it only.
+    workspace = models.ForeignKey("accounts.Workspace", on_delete=models.PROTECT, related_name="simulation_runs")
     scenario = models.ForeignKey(
         "threats.ThreatScenario", null=True, blank=True, on_delete=models.SET_NULL, related_name="runs"
     )
@@ -31,7 +33,9 @@ class SimulationRun(models.Model):
     entry_stage_name = models.CharField(max_length=80)
     status = models.CharField(max_length=10, choices=RunStatus.choices, default=RunStatus.PENDING, db_index=True)
     error_message = models.CharField(max_length=255, blank=True)
-    is_shared = models.BooleanField(default=False, help_text="Shared reports are visible read-only to all users.")
+    is_shared = models.BooleanField(
+        default=False, help_text="Shared reports are visible read-only to everyone in the workspace."
+    )
 
     likelihood = models.PositiveSmallIntegerField()
     severity = models.PositiveSmallIntegerField()
@@ -55,7 +59,7 @@ class SimulationRun(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["user", "-created_at"]),
-            models.Index(fields=["is_shared", "status"]),
+            models.Index(fields=["workspace", "is_shared", "status"]),
         ]
         constraints = [
             models.CheckConstraint(
