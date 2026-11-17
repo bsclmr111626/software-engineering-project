@@ -1,18 +1,21 @@
 # CodeGuard — User Guide
 
-## 1. Create an account and sign in
+## 1. Get access and sign in
 
-1. Open CodeGuard and choose **Create an account**.
-2. Enter a username, an email address (used for password resets) and a password of at least 10 characters that is not too common or entirely numeric.
-3. You are signed in straight away with the default role chosen by your administrator, normally **Analyst**.
+CodeGuard accounts are created by invitation. There is no public sign-up.
+
+1. On the home page, choose **Request access**. The Contact page tells you who to email. If someone in your organisation already uses CodeGuard, you can ask their workspace administrator directly.
+2. An administrator invites you from Settings > Members and roles, choosing the role you will have. You receive an email with a link. The link works once and expires after 7 days; if it has expired, ask for a new one.
+3. Open the link. It shows the workspace you are joining and your role. Choose a username and a password of at least 10 characters that is not too common or entirely numeric, accept the terms, and choose **Create my account**. Your email address is set by the invitation; you can change it later in Settings.
 4. Use **Sign in** on later visits. You land on your start page (the Overview unless you change it in Settings > Display). **Forgot your password?** sends a reset link by email; locally, the email appears in the terminal running the server.
-5. Sign out from the account menu (your initials, top right), or from Settings > Sessions.
+5. If you turned on two-step sign-in, CodeGuard asks for the 6-digit code from your authenticator app after your password. If you don't have your phone, enter one of your backup codes instead.
+6. Sign out from the account menu (your initials, top right), or from Settings > Sessions.
 
 Roles:
 
 - **Viewers** can browse and read shared reports.
 - **Analysts** can also run simulations and manage their own scenarios.
-- **Administrators** can also manage shared scenarios and user roles.
+- **Administrators** can also manage shared scenarios, and invite people to their workspace and change their roles.
 
 ## Finding your way around
 
@@ -122,9 +125,9 @@ Open **Settings** from the account menu or the sidebar. Every setting is saved t
 - **Accessibility**: reduce motion, increase contrast, always underline links.
 - **Notifications**: which categories appear in your inbox.
 - **Privacy and data**: share new reports with everyone by default (off unless you turn it on), and **Download my data** as a JSON file.
-- **Password and security**: change your password and review recent sign-ins and failed attempts.
+- **Password and security**: change your password, turn on two-step sign-in (codes from an authenticator app, plus ten single-use backup codes), and review recent sign-ins and failed attempts.
 - **Sessions**: details of this session and **Sign out of all other sessions**.
-- Administrators also see **Organization** (deployment policies, read-only because they are set by environment variables) and **Users and roles**.
+- Administrators also see **Organization** (deployment policies, read-only because they are set by environment variables) and **Members and roles** (invite people, change roles, suspend access, and reset two-step sign-in for someone who lost their phone and backup codes).
 
 ## 8. Limitations to keep in mind
 
