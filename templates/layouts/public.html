@@ -17,7 +17,7 @@
       <a class="btn btn-primary btn-sm" href="{% url 'core:start' %}">Open CodeGuard <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
       {% else %}
       <a class="btn btn-ghost btn-sm" href="{% url 'accounts:login' %}">Sign in</a>
-      {% if registration_open %}<a class="btn btn-primary btn-sm" href="{% url 'accounts:register' %}">Create an account</a>{% endif %}
+      {% if registration_open %}<a class="btn btn-primary btn-sm" href="{% url 'accounts:register' %}">Create an account</a>{% else %}<a class="btn btn-primary btn-sm" href="{% url 'accounts:request_access' %}">Request access</a>{% endif %}
       {% endif %}
     </div>
   </div>
@@ -57,7 +57,7 @@
           <li><a href="{% url 'settings:index' %}">Settings</a></li>
           {% else %}
           <li><a href="{% url 'accounts:login' %}">Sign in</a></li>
-          {% if registration_open %}<li><a href="{% url 'accounts:register' %}">Create an account</a></li>{% endif %}
+          {% if registration_open %}<li><a href="{% url 'accounts:register' %}">Create an account</a></li>{% else %}<li><a href="{% url 'accounts:request_access' %}">Request access</a></li>{% endif %}
           <li><a href="{% url 'accounts:password_reset' %}">Reset your password</a></li>
           {% endif %}
         </ul>

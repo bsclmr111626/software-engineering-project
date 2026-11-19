@@ -1,0 +1,2 @@
+{% autoescape off %}{{ access.name }} asked for access to {{ site_name }}
+{% endautoescape %}

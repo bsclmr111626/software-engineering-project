@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.models import AccessRequest, AccessRequestStatus
 from accounts.preferences import preferences_for
 from accounts.workspaces import workspace_of
 from audit.models import AuditAction, AuditEvent
@@ -27,7 +28,7 @@ LIMIT = 30
 
 @dataclass(frozen=True)
 class Notification:
-    category: str  # "shared_report" | "remediation" | "security"
+    category: str  # "shared_report" | "remediation" | "security" | "access"
     icon: str
     title: str
     detail: str
@@ -121,6 +122,22 @@ def _assignments(user, since):
         )
 
 
+def _access_requests(user):
+    """Requests waiting for a site administrator, for as long as they wait."""
+    if not user.is_superuser:
+        return
+    waiting = AccessRequest.objects.filter(status=AccessRequestStatus.PENDING).order_by("-created_at")[:LIMIT]
+    for access in waiting:
+        yield Notification(
+            "access",
+            "bi-person-plus",
+            f"{access.name} asked for access",
+            f"{access.organization} · {access.email}. Approve or decline it.",
+            reverse("settings:access_requests"),
+            access.created_at,
+        )
+
+
 SECURITY_TITLES = {
     AuditAction.PASSWORD_CHANGE: "Your password was changed",
     AuditAction.EMAIL_CHANGE: "Your email address was changed",
@@ -176,6 +193,7 @@ def notifications_for(user):
         found += _assignments(user, since)
     if preferences.notify_account_security:
         found += _security(user, since)
+        found += _access_requests(user)
     seen = preferences.notifications_seen_at
     found = [
         Notification(**{**n.__dict__, "unread": seen is None or n.at > seen})

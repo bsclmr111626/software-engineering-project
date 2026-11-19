@@ -231,7 +231,7 @@ class NotificationForm(PreferenceForm):
         help_texts = {
             "notify_shared_reports": "When a colleague shares a simulation report with your workspace.",
             "notify_remediation_due": "When a colleague assigns you an item (also by email), and your open items that are overdue or due within 7 days.",
-            "notify_account_security": "Password and email changes, role changes, signed-out sessions and failed sign-ins to your account.",
+            "notify_account_security": "Password and email changes, role changes, signed-out sessions and failed sign-ins to your account, and for site administrators, access requests waiting for review.",
         }
 
 

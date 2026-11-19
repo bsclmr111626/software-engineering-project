@@ -16,7 +16,7 @@
         <a class="btn btn-outline-secondary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
         {% else %}
         <a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
-        <a class="btn btn-outline-secondary btn-lg" href="{% url 'core:contact' %}">Request access</a>
+        <a class="btn btn-outline-secondary btn-lg" href="{% url 'accounts:request_access' %}">Request access</a>
         {% endif %}
         <a class="btn btn-link btn-lg" href="{% url 'core:help' %}">Read the methodology</a>
       </div>
@@ -170,7 +170,7 @@
       {% if user.is_authenticated %}
       <a class="btn btn-on-ink btn-lg" href="{% url 'core:start' %}">Open CodeGuard</a>
       {% else %}
-      {% if registration_open %}<a class="btn btn-on-ink btn-lg" href="{% url 'accounts:register' %}">Create an account</a>{% endif %}
+      {% if registration_open %}<a class="btn btn-on-ink btn-lg" href="{% url 'accounts:register' %}">Create an account</a>{% else %}<a class="btn btn-on-ink btn-lg" href="{% url 'accounts:request_access' %}">Request access</a>{% endif %}
       <a class="btn btn-outline-on-ink btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
       {% endif %}
     </div>

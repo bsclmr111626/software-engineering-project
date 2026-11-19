@@ -67,6 +67,8 @@ python manage.py migrate --noinput
 python manage.py seed_codeguard
 # Accounts their owners closed more than CODEGUARD_ACCOUNT_DELETION_DAYS ago.
 python manage.py purge_closed_accounts
+# Access requests approved or declined more than CODEGUARD_ACCESS_REQUEST_DAYS ago.
+python manage.py purge_access_requests
 
 echo "== 7/8 Collect static files"
 python manage.py collectstatic --noinput

@@ -279,3 +279,56 @@ class BackupCode(models.Model):
 
     def __str__(self):
         return f"Backup code of {self.user.get_username()}"
+
+
+class AccessRequestStatus(models.TextChoices):
+    PENDING = "pending", "Waiting for review"
+    APPROVED = "approved", "Approved"
+    DECLINED = "declined", "Declined"
+
+
+class AccessRequest(models.Model):
+    """Someone outside CodeGuard asking for an account, from the public
+    Request access form (accounts/access_requests.py).
+
+    Site administrators (superusers) review requests. Approving one creates an
+    ordinary invitation, into a new workspace or an existing one, so the
+    person still chooses their own password from an emailed link. Reviewed
+    requests are deleted after CODEGUARD_ACCESS_REQUEST_DAYS by
+    ``purge_access_requests``.
+    """
+
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    organization = models.CharField(max_length=120)
+    reason = models.TextField(max_length=1000, blank=True)
+    status = models.CharField(max_length=12, choices=AccessRequestStatus.choices, default=AccessRequestStatus.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="access_reviews"
+    )
+    invitation = models.ForeignKey(
+        Invitation, null=True, blank=True, on_delete=models.SET_NULL, related_name="access_requests"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"),
+                condition=models.Q(status="pending"),
+                name="one_pending_access_request_per_email",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(status__in=["pending", "approved", "declined"]), name="access_request_status_valid"
+            ),
+        ]
+
+    def __str__(self):
+        # Kept free of personal details: this is what the audit log stores.
+        return f"Access request #{self.pk}"
+
+    @property
+    def is_pending(self):
+        return self.status == AccessRequestStatus.PENDING

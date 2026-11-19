@@ -52,6 +52,9 @@ class AuditAction(models.TextChoices):
     TWO_FACTOR_FAILED = "two_factor_failed", "Wrong two-step sign-in code"
     BACKUP_CODES_CREATE = "backup_codes_create", "Made new backup codes"
     BACKUP_CODE_USED = "backup_code_used", "Signed in with a backup code"
+    ACCESS_REQUEST = "access_request", "Requested access"
+    ACCESS_APPROVE = "access_approve", "Approved an access request"
+    ACCESS_DECLINE = "access_decline", "Declined an access request"
 
 
 class AppendOnlyQuerySet(models.QuerySet):

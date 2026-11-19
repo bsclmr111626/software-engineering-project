@@ -68,10 +68,17 @@ ADMIN_NAV = (
 )
 
 
+# Site administrators (superusers) also review access requests from outside any workspace.
+ACCESS_NAV_ITEM = ("access_requests", "Access requests", "bi-person-plus")
+
+
 def settings_nav(user):
     from .permissions import is_admin
 
-    return SETTINGS_NAV + ([ADMIN_NAV] if is_admin(user) else [])
+    if not is_admin(user):
+        return SETTINGS_NAV
+    label, items = ADMIN_NAV
+    return SETTINGS_NAV + [(label, items + ([ACCESS_NAV_ITEM] if user.is_superuser else []))]
 
 
 def _render(request, template, page, context=None):

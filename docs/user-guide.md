@@ -4,8 +4,8 @@
 
 CodeGuard accounts are created by invitation. There is no public sign-up.
 
-1. On the home page, choose **Request access**. The Contact page tells you who to email. If someone in your organisation already uses CodeGuard, you can ask their workspace administrator directly.
-2. An administrator invites you from Settings > Members and roles, choosing the role you will have. You receive an email with a link. The link works once and expires after 7 days; if it has expired, ask for a new one.
+1. On the home page or the sign-in page, choose **Request access**. Give your name, work email, team or organization and, if you like, what you want to use CodeGuard for, then choose **Send request**. A site administrator reviews it. If someone in your organization already uses CodeGuard, you can instead ask their workspace administrator to invite you.
+2. When your request is approved, or an administrator invites you from Settings > Members and roles, you receive an email with a link. The invitation says which workspace you join and your role. The link works once and expires after 7 days; if it has expired, ask for a new one.
 3. Open the link. It shows the workspace you are joining and your role. Choose a username and a password of at least 10 characters that is not too common or entirely numeric, accept the terms, and choose **Create my account**. Your email address is set by the invitation; you can change it later in Settings.
 4. Use **Sign in** on later visits. You land on your start page (the Overview unless you change it in Settings > Display). **Forgot your password?** sends a reset link by email; locally, the email appears in the terminal running the server.
 5. If you turned on two-step sign-in, CodeGuard asks for the 6-digit code from your authenticator app after your password. If you don't have your phone, enter one of your backup codes instead.
@@ -128,6 +128,7 @@ Open **Settings** from the account menu or the sidebar. Every setting is saved t
 - **Password and security**: change your password, turn on two-step sign-in (codes from an authenticator app, plus ten single-use backup codes), and review recent sign-ins and failed attempts.
 - **Sessions**: details of this session and **Sign out of all other sessions**.
 - Administrators also see **Organization** (deployment policies, read-only because they are set by environment variables) and **Members and roles** (invite people, change roles, suspend access, and reset two-step sign-in for someone who lost their phone and backup codes).
+- Site administrators also see **Access requests**: the requests sent from the Request access form. **Approve and invite** sends an invitation into a new workspace for the person's team (named after their organization; Administrator lets them invite their own team) or into an existing workspace, with the role you choose. If email is not set up, the invitation link is shown once so you can send it yourself. **Decline** closes the request; the person is not told automatically. Waiting requests also appear in your notifications.
 
 ## 8. Limitations to keep in mind
 

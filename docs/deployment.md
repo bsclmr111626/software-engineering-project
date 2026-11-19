@@ -53,6 +53,11 @@ python manage.py collectstatic --noinput # writes staticfiles/ for the proxy to 
 
 With `CODEGUARD_REGISTRATION=closed`, workspace administrators invite people from
 **Settings > Members and roles**; each invitation carries a role and joins that workspace.
+People outside any workspace use the public **Request access** form instead. Superusers review
+those requests in **Settings > Access requests** (they also appear in the notification bell,
+and are emailed to every active superuser once email works) and approve each one into a new or
+existing workspace, which sends a normal invitation. Make sure at least one active superuser
+exists, or requests wait unseen.
 
 ## 4. Running the application (example, not tested here)
 
@@ -137,6 +142,9 @@ Test a restore on a spare machine periodically; an untested backup is not a back
 - **Closed accounts.** A user can close their own account (Settings > Privacy and data). It is
   inactive at once and deleted, with everything it owns, by `python manage.py
   purge_closed_accounts` once `CODEGUARD_ACCOUNT_DELETION_DAYS` (default 14) have passed.
+- **Access requests.** Approved and declined requests are deleted by `python manage.py
+  purge_access_requests` once `CODEGUARD_ACCESS_REQUEST_DAYS` (default 90) have passed since the
+  decision; waiting requests are kept. `scripts/release.sh` runs it at every release.
   `scripts/release.sh` runs the command at every release; schedule it as well if releases are
   rare. Reactivating the user in Settings > Users before then cancels the deletion.
 - **Audit protection.** After every `migrate`, SQLite triggers are (re)installed that refuse

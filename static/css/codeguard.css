@@ -941,7 +941,11 @@ details.cg-data[open] > summary { margin-bottom: var(--space-3); }
 .cg-settings-body > header p { color: var(--text-muted); margin: var(--space-2) 0 0; max-width: 60ch; }
 .cg-settings-section { margin-bottom: var(--space-7); }
 .cg-settings-section > h2 { font-size: var(--fs-md); margin-bottom: var(--space-2); }
-.cg-settings-section > p.cg-section-help { color: var(--text-muted); font-size: var(--fs-sm); margin-bottom: var(--space-4); max-width: 60ch; }
+.cg-settings-section > p.cg-section-help { color: var(--text-muted); font-size: var(--fs-sm); margin-bottom: var(--space-4); max-width: 60ch; }
+/* Access requests (Settings > Access requests): one card per waiting request. */
+.cg-access { display: grid; gap: var(--space-3); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3); }
+.cg-access-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.cg-access .cg-filterbar { margin-bottom: 0; }
 .cg-form-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding-top: var(--space-5); border-top: 1px solid var(--border); }
 .cg-profile-card { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); margin-bottom: var(--space-6); }
 .cg-profile-card h2 { font-size: var(--fs-lg); margin: 0; }

@@ -67,11 +67,14 @@ def open_invitation_for(workspace, email):
     return open_invitations(workspace).filter(email__iexact=email).first()
 
 
-def create(request, email, role):
+def create(request, email, role, workspace=None):
     """Invite ``email`` to the inviter's workspace with ``role``. An open
     invitation of that workspace for the same address is reused with a fresh
-    link. Returns (invitation, link, sent)."""
-    workspace = workspace_of(request.user)
+    link. Returns (invitation, link, sent).
+
+    ``workspace`` is given only when a site administrator approves an access
+    request (accounts/access_requests.py), which may target any workspace."""
+    workspace = workspace or workspace_of(request.user)
     with transaction.atomic():
         invitation = open_invitation_for(workspace, email)
         created = invitation is None
@@ -86,6 +89,7 @@ def create(request, email, role):
         AuditAction.INVITATION_CREATE if created else AuditAction.INVITATION_RESEND,
         target=invitation,
         request=request,
+        workspace=workspace,
         role=role,
     )
     link, sent = _deliver(request, invitation, token)

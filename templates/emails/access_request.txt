@@ -1,0 +1,14 @@
+{% autoescape off %}Hello {{ reviewer }},
+
+Someone asked for an account on {{ site_name }}:
+
+Name: {{ access.name }}
+Email: {{ access.email }}
+Team or organization: {{ access.organization }}
+{% if access.reason %}What for: {{ access.reason }}
+{% endif %}
+Approve or decline it here:
+{{ link }}
+
+Approving it sends them an invitation. Nothing happens until you choose.
+{% endautoescape %}

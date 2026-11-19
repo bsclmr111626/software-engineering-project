@@ -1,0 +1,15 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Request received{% endblock %}
+{% block content %}
+<h1>Request received</h1>
+<p>Thank you. A site administrator will review your request{% if email %} for <strong>{{ email }}</strong>{% endif %}.</p>
+<ul class="small text-muted">
+  <li>If it is approved, you receive an invitation by email. Its link works once and expires after {{ invitation_days }} days.</li>
+  <li>Nothing after a few days? Check the spam folder{% if contact_email %}, or email <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{% endif %}.</li>
+  <li>Sending the form again does not speed things up: one request per address is kept.</li>
+</ul>
+<div class="d-flex flex-wrap gap-2 mt-3">
+  <a class="btn btn-primary" href="{% url 'core:landing' %}">Back to the home page</a>
+  <a class="btn btn-outline-secondary" href="{% url 'accounts:login' %}">Sign in</a>
+</div>
+{% endblock %}

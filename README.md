@@ -69,6 +69,7 @@ The demo accounts are for local use only. The full installation, configuration a
 - **Remediation as team work**: add a recommended control to the plan, assign it to a colleague in your workspace (they are notified in the app and by email), share it with the workspace, track status, due date, notes and an evidence link, discuss it in comments, and follow every change in its history. The plan has Mine, Assigned to me and team views and an Overdue filter; an item is verified when a later run by the owner or assignee confirms the modeled reduction.
 - **Historical reports**: immutable, versioned snapshots; an A4 PDF download (real, searchable text and a vector chart), CSV export and optional read-only sharing.
 - **Two-step sign-in**: optional codes from any authenticator app (RFC 6238), ten single-use backup codes, the same lockout as passwords, and a reset by a workspace administrator or `manage.py reset_two_factor` for someone who lost both.
+- **Request access**: while sign-up is closed, visitors ask for an account from a public form (rate-limited, with a honeypot, and it never reveals whether an address is known). Site administrators are notified in the app (and by email once email works), then approve the request, which sends an ordinary invitation into a new or existing workspace, or decline it. Reviewed requests are deleted after 90 days.
 - **Getting started**: a checklist on the Overview that follows the person's role and ticks itself off from what they have actually done.
 - **Multi-page product shell**: a sidebar organised the way an analyst works (Overview; Model: Supply chain, Threat library, Security controls; Simulate: Simulations, Results; Analyze and respond: Risk analysis, Remediation; Records: Reports, Activity and audit), breadcrumbs, a notifications inbox and an account menu. See [Information architecture](#information-architecture).
 - **Supply chain explorer**: the five stages with their assets, protecting controls, entry scenarios, a propagation graph aggregated across scenarios, and per-stage history.
@@ -80,10 +81,10 @@ The demo accounts are for local use only. The full installation, configuration a
 - **Audit log**: append-only (single and bulk changes refused) and sanitised (never stores passwords or tokens), with a retention command.
 - **Security hardening**: sign-in throttling, a registration policy (open, allowed email domains, or closed), strict CSP, security headers, CSRF, IDOR protection, secure cookie settings, and friendly error pages.
 - **Operations**: `/healthz/` health check, request IDs on every response and log line, optional JSON logs, online verified backups (`backup_db`), and a [deployment guide](docs/deployment.md).
-- **Settings center**: Profile, Account (email change with password confirmation), Appearance and theme (light, dark or system; three accent themes), Text and typography, Display (density, timestamps, rows per page, start page), Accessibility (reduced motion, increased contrast, underlined links), Notifications, Privacy and data (share-by-default, JSON export of your data), Password and security, Sessions (sign out everywhere else), and for administrators Organization and Members and roles. Every setting is stored per user and changes behaviour.
+- **Settings center**: Profile, Account (email change with password confirmation), Appearance and theme (light, dark or system; three accent themes), Text and typography, Display (density, timestamps, rows per page, start page), Accessibility (reduced motion, increased contrast, underlined links), Notifications, Privacy and data (share-by-default, JSON export of your data), Password and security, Sessions (sign out everywhere else), and for administrators Organization and Members and roles (plus Access requests for site administrators). Every setting is stored per user and changes behaviour.
 - **Design system**: a distinct editorial identity (warm paper, graphite ink, an ultramarine signal colour; Newsreader, Instrument Sans and JetBrains Mono) defined as CSS tokens, with light and dark themes. See [DESIGN.md](DESIGN.md).
 - **Accessibility**: WCAG 2.2 AA automated audit (axe-core) of 47 pages at desktop and phone widths in both themes with 0 violations; keyboard operation with visible focus, labelled forms whose errors are announced, and text alternatives plus data tables for the diagram and charts.
-- **Tests and CI**: 530 automated tests, 95% coverage, a Jenkins pipeline, GitHub Actions, Ruff, and optional browser-based verification tools.
+- **Tests and CI**: 546 automated tests, 95% coverage, a Jenkins pipeline, GitHub Actions, Ruff, and optional browser-based verification tools.
 
 ## Information architecture
 
@@ -190,6 +191,7 @@ Settings are read from environment variables. A local `.env` file is loaded auto
 | `CODEGUARD_ADMIN_EMAILS` | empty | Comma-separated addresses that receive server error emails when DEBUG is off |
 | `CODEGUARD_EMAIL_VERIFICATION_HOURS`, `CODEGUARD_INVITATION_DAYS` | `48`, `7` | Lifetime of email confirmation links and invitations |
 | `CODEGUARD_ACCOUNT_DELETION_DAYS` | `14` | Days between a user closing their account and `purge_closed_accounts` deleting it |
+| `CODEGUARD_ACCESS_REQUEST_DAYS` | `90` | Days an approved or declined access request is kept before `purge_access_requests` deletes it |
 | `DJANGO_DB_PATH` | `./db.sqlite3` | SQLite file location |
 | `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SECURE_COOKIES`, `DJANGO_HSTS_SECONDS`, `DJANGO_BEHIND_PROXY` | secure when DEBUG is false | HTTPS hardening |
 
@@ -236,8 +238,8 @@ Last re-verified on 2026-10-28 (product redesign) on Windows 11 with Python 3.12
 
 | Check | Result |
 |---|---|
-| `pytest` *(2026-11-15)* | **530 passed** |
-| Coverage *(2026-11-15)* | **95%** total (gate is 85%) |
+| `pytest` *(2026-11-19)* | **546 passed** |
+| Coverage *(2026-11-19)* | **95%** total (gate is 85%) |
 | Ruff lint/format, `manage.py check`, `makemigrations --check` | Clean |
 | `scripts/ci_deploy_check.py` (`check --deploy`) *(2026-11-15)* | 0 errors; 2 intentional HSTS warnings, and `codeguard.W001`/`W002` while email delivery is not configured (see Security notes) |
 | `scripts/ci_dependency_audit.py` (`pip-audit`) *(2026-11-15)* | No known vulnerabilities. Offline behaviour also tested: exit 2 (UNSTABLE) after the 180 s cap. |

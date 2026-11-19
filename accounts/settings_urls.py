@@ -33,6 +33,13 @@ urlpatterns = [
     path("users/invite/", account_views.invite, name="invite"),
     path("users/invitations/<int:invitation_id>/resend/", account_views.resend_invitation, name="resend_invitation"),
     path("users/invitations/<int:invitation_id>/revoke/", account_views.revoke_invitation, name="revoke_invitation"),
+    path("access-requests/", account_views.access_request_list, name="access_requests"),
+    path(
+        "access-requests/<int:request_id>/approve/", account_views.approve_access_request, name="approve_access_request"
+    ),
+    path(
+        "access-requests/<int:request_id>/decline/", account_views.decline_access_request, name="decline_access_request"
+    ),
     path("users/<int:user_id>/", account_views.user_detail, name="user_detail"),
     path("users/<int:user_id>/role/", account_views.change_role, name="change_role"),
     path("users/<int:user_id>/suspend/", account_views.suspend_user, name="suspend_user"),

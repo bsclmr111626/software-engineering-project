@@ -2,9 +2,9 @@
 {% block title %}Registration closed{% endblock %}
 {% block content %}
 <h1>Access is by invitation</h1>
-<p>Accounts on this CodeGuard deployment are created by invitation. Ask your administrator to invite you; you will receive an email with a link to set up your account.</p>
+<p>Accounts on this CodeGuard deployment are created by invitation. Request access and a site administrator will review it, or ask your team's administrator to invite you. Either way, you receive an email with a link to set up your account.</p>
 <div class="d-flex flex-wrap gap-2">
-  <a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
-  <a class="btn btn-outline-secondary btn-lg" href="{% url 'core:contact' %}">Contact</a>
+  <a class="btn btn-primary btn-lg" href="{% url 'accounts:request_access' %}">Request access</a>
+  <a class="btn btn-outline-secondary btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
 </div>
 {% endblock %}

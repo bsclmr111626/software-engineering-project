@@ -192,6 +192,11 @@ CODEGUARD_INVITATION_DAYS = int(os.environ.get("CODEGUARD_INVITATION_DAYS", "7")
 CODEGUARD_ACCOUNT_DELETION_DAYS = int(os.environ.get("CODEGUARD_ACCOUNT_DELETION_DAYS", "14"))
 if CODEGUARD_ACCOUNT_DELETION_DAYS < 1:
     raise ImproperlyConfigured("CODEGUARD_ACCOUNT_DELETION_DAYS must be at least 1.")
+# Approved and declined access requests are deleted this many days after review
+# (accounts/access_requests.py, purge_access_requests). Waiting ones are kept.
+CODEGUARD_ACCESS_REQUEST_DAYS = int(os.environ.get("CODEGUARD_ACCESS_REQUEST_DAYS", "90"))
+if CODEGUARD_ACCESS_REQUEST_DAYS < 1:
+    raise ImproperlyConfigured("CODEGUARD_ACCESS_REQUEST_DAYS must be at least 1.")
 # Shown on the contact, privacy and terms pages and in emails. Empty hides it.
 CODEGUARD_CONTACT_EMAIL = os.environ.get("CODEGUARD_CONTACT_EMAIL", "").strip()
 

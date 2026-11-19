@@ -16,9 +16,11 @@ from django.views.decorators.http import require_POST
 from audit.models import AuditAction, AuditEvent
 from audit.services import client_ip, record_event
 
-from . import closure, emails, invitations, lifecycle, two_factor, workspaces
+from . import access_requests, closure, emails, invitations, lifecycle, two_factor, workspaces
 from .forms import (
     AcceptInvitationForm,
+    AccessRequestForm,
+    ApproveAccessForm,
     EmailForm,
     InvitationForm,
     RegistrationForm,
@@ -27,8 +29,8 @@ from .forms import (
     TwoFactorCodeForm,
     UserFilterForm,
 )
-from .models import AccountOrigin, Profile, Role, TwoFactorDevice
-from .permissions import admin_required, get_role, registration_open
+from .models import AccessRequest, AccessRequestStatus, AccountOrigin, Profile, Role, TwoFactorDevice
+from .permissions import admin_required, get_role, registration_open, superuser_required
 from .preferences import page_size, preferences_for
 from .settings_views import settings_nav
 from .throttling import recent_events
@@ -40,6 +42,7 @@ logger = logging.getLogger("codeguard.accounts")
 SIGNUP_IP_LIMIT = (5, 60)  # sign-up submissions per client IP per hour
 CHECK_EMAIL_SESSION_KEY = "cg_check_email"
 INVITE_LINK_SESSION_KEY = "cg_invitation_link"
+ACCESS_SENT_SESSION_KEY = "cg_access_request_email"
 
 
 # --- Sign-up and email confirmation ----------------------------------------------
@@ -65,6 +68,47 @@ def register(request):
         _create_signup_account(request, form, email)
         return _show_check_email(request, email)
     return render(request, "registration/register.html", {"form": form})
+
+
+# --- Request access (when sign-up is closed) -------------------------------------
+
+
+def request_access(request):
+    if request.user.is_authenticated:
+        return redirect("core:start")
+    if registration_open():
+        return redirect("accounts:register")
+    form = AccessRequestForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"]
+        if form.is_bot:
+            # Same outcome as a real request, so the bot learns nothing.
+            return _show_access_sent(request, email)
+        limit, minutes = access_requests.IP_LIMIT
+        ip = client_ip(request)
+        if ip and recent_events(AuditAction.ACCESS_REQUEST, minutes, ip_address=ip) >= limit:
+            form.add_error(None, "Too many requests from your network. Try again in an hour.")
+            return render(request, "registration/request_access.html", {"form": form})
+        access_requests.submit(request, form.cleaned_data)
+        return _show_access_sent(request, email)
+    return render(request, "registration/request_access.html", {"form": form})
+
+
+def _show_access_sent(request, email):
+    request.session[ACCESS_SENT_SESSION_KEY] = email
+    return redirect("accounts:request_access_sent")
+
+
+def request_access_sent(request):
+    return render(
+        request,
+        "registration/request_access_sent.html",
+        {
+            "email": request.session.get(ACCESS_SENT_SESSION_KEY),
+            "invitation_days": settings.CODEGUARD_INVITATION_DAYS,
+            "contact_email": settings.CODEGUARD_CONTACT_EMAIL,
+        },
+    )
 
 
 def _create_signup_account(request, form, email):
@@ -542,6 +586,81 @@ def revoke_invitation(request, invitation_id):
     invitations.revoke(request, invitation)
     messages.success(request, f"The invitation for {invitation.email} was revoked; its link no longer works.")
     return redirect("settings:users")
+
+
+# --- Access requests (site administrators) --------------------------------------------
+
+
+REVIEWED_SHOWN = 20
+
+
+@superuser_required
+def access_request_list(request):
+    waiting = list(access_requests.pending().order_by("created_at"))
+    for access in waiting:
+        access.has_account = access_requests.has_account(access.email)
+        access.form = ApproveAccessForm(access=access, prefix=f"a{access.pk}")
+    reviewed = (
+        AccessRequest.objects.exclude(status=AccessRequestStatus.PENDING)
+        .select_related("reviewed_by", "invitation__workspace")
+        .order_by("-reviewed_at")[:REVIEWED_SHOWN]
+    )
+    return render(
+        request,
+        "settings/access_requests.html",
+        _admin_context(
+            request,
+            "access_requests",
+            waiting=waiting,
+            reviewed=reviewed,
+            invitation_link=request.session.pop(INVITE_LINK_SESSION_KEY, None),
+            invitation_days=settings.CODEGUARD_INVITATION_DAYS,
+            retention_days=settings.CODEGUARD_ACCESS_REQUEST_DAYS,
+        ),
+    )
+
+
+@superuser_required
+@require_POST
+def approve_access_request(request, request_id):
+    access = get_object_or_404(access_requests.pending(), pk=request_id)
+    form = ApproveAccessForm(request.POST, access=access, prefix=f"a{access.pk}")
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
+        return redirect("settings:access_requests")
+    try:
+        invitation, link, sent = access_requests.approve(
+            request,
+            access,
+            role=form.cleaned_data["role"],
+            workspace=form.cleaned_data["target"],
+            workspace_name=form.cleaned_data["workspace_name"],
+        )
+    except access_requests.AlreadyReviewed:
+        messages.info(request, "That request was already dealt with.")
+        return redirect("settings:access_requests")
+    except access_requests.AccountExists:
+        messages.error(
+            request, f"{access.email} already has an account, so there is nobody to invite. Decline the request."
+        )
+        return redirect("settings:access_requests")
+    _report_invitation(request, invitation, link, sent)
+    return redirect("settings:access_requests")
+
+
+@superuser_required
+@require_POST
+def decline_access_request(request, request_id):
+    access = get_object_or_404(access_requests.pending(), pk=request_id)
+    try:
+        access_requests.decline(request, access)
+    except access_requests.AlreadyReviewed:
+        messages.info(request, "That request was already dealt with.")
+    else:
+        messages.success(request, f"The request from {access.email} was declined. They are not told automatically.")
+    return redirect("settings:access_requests")
 
 
 def _report_invitation(request, invitation, link, sent):

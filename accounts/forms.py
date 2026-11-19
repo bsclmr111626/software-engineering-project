@@ -124,6 +124,74 @@ class RegistrationForm(BootstrapFormMixin, UserCreationForm):
         return bool(self.cleaned_data.get("website"))
 
 
+class AccessRequestForm(BootstrapFormMixin, forms.Form):
+    """The public Request access form (accounts/access_requests.py).
+    ``website`` is the same honeypot as on the sign-up form."""
+
+    name = forms.CharField(max_length=120, label="Your name", widget=forms.TextInput(attrs={"autocomplete": "name"}))
+    email = forms.EmailField(
+        label="Work email",
+        help_text="If your request is approved, the invitation goes here.",
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+    organization = forms.CharField(
+        max_length=120,
+        label="Team or organization",
+        widget=forms.TextInput(attrs={"autocomplete": "organization"}),
+    )
+    reason = forms.CharField(
+        max_length=1000,
+        required=False,
+        label="What would you like to use CodeGuard for?",
+        help_text="Optional. A sentence or two helps us set up the right access.",
+        widget=forms.Textarea(attrs={"rows": 4}),
+    )
+    website = forms.CharField(required=False, label="Leave this field empty")
+
+    def clean_email(self):
+        return self.cleaned_data["email"].strip().lower()
+
+    @property
+    def is_bot(self):
+        return bool(self.cleaned_data.get("website"))
+
+
+NEW_WORKSPACE = "new"
+
+
+class ApproveAccessForm(BootstrapFormMixin, forms.Form):
+    """How a site administrator approves an access request: into a new
+    workspace (named after the organization by default) or an existing one."""
+
+    workspace = forms.ChoiceField(label="Workspace")
+    workspace_name = forms.CharField(
+        max_length=80, required=False, label="New workspace name", help_text="Used only for a new workspace."
+    )
+    role = forms.ChoiceField(choices=Role.choices, initial=Role.ADMIN, label="Role")
+
+    def __init__(self, *args, access=None, **kwargs):
+        from .models import Workspace
+
+        super().__init__(*args, **kwargs)
+        self.workspaces = {str(w.pk): w for w in Workspace.objects.order_by("name", "id")}
+        self.fields["workspace"].choices = [(NEW_WORKSPACE, "A new workspace")] + [
+            (pk, w.name) for pk, w in self.workspaces.items()
+        ]
+        if access is not None:
+            self.fields["workspace_name"].initial = access.organization[:80]
+
+    def clean(self):
+        data = super().clean()
+        choice = data.get("workspace")
+        if choice == NEW_WORKSPACE:
+            if not (data.get("workspace_name") or "").strip():
+                self.add_error("workspace_name", "Name the new workspace.")
+            data["target"] = None
+        elif choice:
+            data["target"] = self.workspaces[choice]
+        return data
+
+
 class EmailForm(BootstrapFormMixin, forms.Form):
     email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
 

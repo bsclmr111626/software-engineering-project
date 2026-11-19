@@ -204,7 +204,7 @@ def favicon(request):
 # --- Legal and contact pages ----------------------------------------------------
 
 # Change when the wording of the privacy notice or terms changes.
-LEGAL_UPDATED = date(2026, 11, 15)
+LEGAL_UPDATED = date(2026, 11, 19)
 
 
 def _public_page(request, template):

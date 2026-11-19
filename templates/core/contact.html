@@ -11,7 +11,7 @@
 {% endif %}
 <h2>Common requests</h2>
 <ul>
-  <li><strong>Getting access:</strong> {% if registration_open %}<a href="{% url 'accounts:register' %}">create an account</a>.{% else %}accounts are created by invitation; ask the administrator to invite you.{% endif %}</li>
+  <li><strong>Getting access:</strong> {% if registration_open %}<a href="{% url 'accounts:register' %}">create an account</a>.{% else %}accounts are created by invitation. <a href="{% url 'accounts:request_access' %}">Request access</a> and a site administrator will review it, or ask your team's administrator to invite you.{% endif %}</li>
   <li><strong>Forgotten password:</strong> <a href="{% url 'accounts:password_reset' %}">reset it here</a>; the link goes to the email address on your account.</li>
   <li><strong>Your data:</strong> see the <a href="{% url 'core:privacy' %}">privacy notice</a>.</li>
   <li><strong>Security issue:</strong> please report it privately rather than in a shared report.</li>

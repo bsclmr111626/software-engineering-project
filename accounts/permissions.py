@@ -60,3 +60,17 @@ def role_required(*roles):
 
 admin_required = role_required(Role.ADMIN)
 analyst_required = role_required(Role.ADMIN, Role.ANALYST)
+
+
+def superuser_required(view):
+    """Require a signed-in site administrator (superuser); otherwise respond 403.
+    Used for work that spans workspaces, such as reviewing access requests."""
+
+    @login_required
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not (request.user.is_superuser and request.user.is_active):
+            raise PermissionDenied("Only site administrators can do this.")
+        return view(request, *args, **kwargs)
+
+    return wrapped

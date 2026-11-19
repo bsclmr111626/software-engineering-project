@@ -1,0 +1,20 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Request access{% endblock %}
+{% block content %}
+<h1>Request access</h1>
+<p>Accounts on CodeGuard are created by invitation. Tell us who you are and a site administrator will review your request. If it is approved, you receive an invitation by email to choose your username and password.</p>
+{% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+<form method="post" novalidate data-loading>
+  {% csrf_token %}
+  {% for field in form %}
+  {% if field.name == "website" %}
+  <div class="cg-hp" aria-hidden="true"><label for="{{ field.id_for_label }}">{{ field.label }}</label><input type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}" tabindex="-1" autocomplete="off" value=""></div>
+  {% else %}
+  {% include "components/field.html" %}
+  {% endif %}
+  {% endfor %}
+  <p class="small text-muted">We use these details only to review your request. See the <a href="{% url 'core:privacy' %}">privacy notice</a>.</p>
+  <button class="btn btn-primary btn-lg w-100" type="submit"><span class="btn-label">Send request</span><span class="btn-loading">Sending…</span></button>
+</form>
+<div class="cg-auth-alt"><span>Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></span></div>
+{% endblock %}

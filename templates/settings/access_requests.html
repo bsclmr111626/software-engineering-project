@@ -1,0 +1,70 @@
+{% extends "layouts/settings.html" %}
+{% block title %}Access requests · Settings{% endblock %}
+{% block settings_title %}Access requests{% endblock %}
+{% block settings_body %}
+<header><h1>Access requests</h1><p>People who asked for an account from the public Request access form. Approving a request sends them an invitation, into a new workspace for their team or an existing one; they choose their own password. Only site administrators see this page, and every decision is recorded in the audit log.</p></header>
+
+{% if invitation_link %}
+<div class="alert {% if invitation_link.sent %}alert-info{% else %}alert-warning{% endif %}" role="status">
+  <p class="mb-2">Invitation link for <strong>{{ invitation_link.email }}</strong>{% if invitation_link.sent %} (also emailed){% else %}. Email is not set up, so send it to them yourself{% endif %}. It is shown only now, works once and expires in {{ invitation_days }} days; anyone with it can create this account.</p>
+  <label class="visually-hidden" for="invite-link">Invitation link</label>
+  <input class="form-control font-monospace" id="invite-link" type="text" value="{{ invitation_link.link }}" readonly>
+</div>
+{% endif %}
+
+<section class="cg-settings-section" aria-labelledby="waiting-h">
+  <h2 id="waiting-h">Waiting for review{% if waiting %} <span class="tag">{{ waiting|length }}</span>{% endif %}</h2>
+  {% for access in waiting %}
+  <article class="cg-panel cg-access" aria-labelledby="access-{{ access.pk }}">
+    <div class="cg-access-head">
+      <div>
+        <h3 class="h6 mb-1" id="access-{{ access.pk }}">{{ access.name }}</h3>
+        <p class="mb-0 small"><a href="mailto:{{ access.email }}">{{ access.email }}</a> · {{ access.organization }}</p>
+      </div>
+      <span class="small text-muted text-nowrap">Asked {{ access.created_at|date:"Y-m-d H:i" }}</span>
+    </div>
+    {% if access.reason %}<p class="cg-comment-body mb-0">{{ access.reason|linebreaksbr }}</p>{% endif %}
+    {% if access.has_account %}
+    <div class="alert alert-warning mb-0" role="status">This address already has an account, so there is nobody to invite. They may only need a password reset. Decline the request.</div>
+    {% else %}
+    <form method="post" action="{% url 'settings:approve_access_request' access.pk %}" class="cg-filterbar" novalidate data-loading>
+      {% csrf_token %}
+      <div class="cg-filter"><label class="form-label" for="{{ access.form.workspace.id_for_label }}">{{ access.form.workspace.label }}</label>{{ access.form.workspace }}</div>
+      <div class="cg-filter"><label class="form-label" for="{{ access.form.workspace_name.id_for_label }}">{{ access.form.workspace_name.label }}</label>{{ access.form.workspace_name }}</div>
+      <div class="cg-filter"><label class="form-label" for="{{ access.form.role.id_for_label }}">{{ access.form.role.label }}</label>{{ access.form.role }}</div>
+      <div class="d-flex gap-2"><button class="btn btn-primary" type="submit"><span class="btn-label">Approve and invite<span class="visually-hidden"> {{ access.name }}</span></span><span class="btn-loading">Inviting…</span></button></div>
+    </form>
+    <p class="small text-muted mb-0">The new workspace name is used only when Workspace is "A new workspace". In a new workspace, Administrator lets them invite their own team.</p>
+    {% endif %}
+    <form method="post" action="{% url 'settings:decline_access_request' access.pk %}" data-confirm="Decline the request from {{ access.email }}? They are not told automatically.">
+      {% csrf_token %}<button class="btn btn-sm btn-ghost" type="submit">Decline<span class="visually-hidden"> the request from {{ access.name }}</span></button>
+    </form>
+  </article>
+  {% empty %}
+  <p class="cg-section-help">No requests are waiting. New ones also appear in your notifications.</p>
+  {% endfor %}
+</section>
+
+{% if reviewed %}
+<section class="cg-settings-section" aria-labelledby="reviewed-h">
+  <h2 id="reviewed-h">Recently reviewed</h2>
+  <p class="cg-section-help">Reviewed requests are deleted {{ retention_days }} days after the decision.</p>
+  <div class="cg-panel cg-panel--flush">
+    <div class="table-responsive">
+      <table class="table" aria-label="Recently reviewed access requests">
+        <thead><tr><th scope="col">Person</th><th scope="col">Decision</th><th scope="col">By</th></tr></thead>
+        <tbody>
+          {% for access in reviewed %}
+          <tr>
+            <td>{{ access.name }}<span class="cg-cell-sub">{{ access.email }} · {{ access.organization }}</span></td>
+            <td>{% if access.status == "approved" %}<span class="tag tag-strong">Approved</span>{% if access.invitation %}<span class="cg-cell-sub">Invited to {{ access.invitation.workspace.name }} as {{ access.invitation.get_role_display }}{% if access.invitation.accepted_at %}, joined{% endif %}</span>{% endif %}{% else %}<span class="tag">Declined</span>{% endif %}</td>
+            <td class="small text-nowrap">{{ access.reviewed_by.get_username|default:"A former administrator" }}<span class="cg-cell-sub">{{ access.reviewed_at|date:"Y-m-d" }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
